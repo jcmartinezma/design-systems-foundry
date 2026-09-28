@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #141414;
+        --line: rgba(255, 255, 255, 0.08);
+        --line-strong: rgba(255, 255, 255, 0.14);
+        --text: #ececec;
+        --muted: #8d8d8d;
+        --faint: #6f6f6f;
+        --danger: #f0a8a8;
+        --focus: #8ab4ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 13px/1.4 ui-sans-serif, system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      main { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+      p { margin: 0; color: var(--muted); }
+      button, textarea {
+        font: inherit;
+        color: inherit;
+        background: transparent;
+        border: 1px solid var(--line-strong);
+        border-radius: 6px;
+      }
+      button { height: 28px; padding: 0 10px; cursor: pointer; }
+      button.primary { background: #ececec; color: #161616; border-color: #ececec; }
+      button:disabled { opacity: 0.55; cursor: default; }
+      button:focus-visible, textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+      textarea {
+        min-height: 88px;
+        padding: 8px;
+        resize: vertical;
+        background: #1a1a1a;
+      }
+      .tabs {
+        display: flex;
+        padding: 2px;
+        border-radius: 7px;
+        background: #121212;
+        border: 1px solid var(--line);
+      }
+      .tabs button {
+        flex: 1;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        border-radius: 5px;
+      }
+      .tabs button.active { background: #2c2c2c; color: white; }
+      .choice { display: flex; flex-direction: column; gap: 4px; }
+      .choice label { align-items: flex-start; border: 1px solid var(--line); }
+      .choice label:has(input:checked) { border-color: var(--line-strong); background: rgba(255, 255, 255, 0.05); }
+      .choice small, .check small { display: block; color: var(--faint); font-size: 11px; }
+      .check { align-items: flex-start; }
+      .json-box { display: flex; flex-direction: column; gap: 8px; }
+      .json-box[hidden] { display: none; }
+      .panel > button.primary { width: 100%; }
+      .panel { display: none; flex-direction: column; gap: 10px; }
+      .panel.active { display: flex; }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; }
+      .list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        max-height: 220px;
+        overflow: auto;
+      }
+      label {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 8px;
+        border-radius: 6px;
+      }
+      label:hover { background: rgba(255, 255, 255, 0.05); }
+      label strong { font-weight: 550; }
+      label em { color: var(--faint); font-style: normal; font-size: 11px; margin-left: auto; }
+      .error { color: var(--danger); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="tabs" role="tablist">
+        <button id="tab-colors" class="active" type="button">Colores</button>
+        <button id="tab-icons" type="button">Iconos</button>
+      </div>
+
+      <section id="colors" class="panel active">
+        <p>Importa las rampas desde Creator, que debe estar abierto en este ordenador.</p>
+        <button id="load" type="button">Leer de Creator</button>
+        <label class="check">
+          <input id="use-json" type="checkbox" />
+          <span>Pegar JSON<small>Márcalo solo si Figma no puede leer localhost.</small></span>
+        </label>
+        <div id="json-box" class="json-box" hidden>
+          <textarea id="json" placeholder='{"source":"creator","sets":[...]}'></textarea>
+        </div>
+        <p id="sets-hint">Pulsa Leer de Creator para ver las collections.</p>
+        <div id="sets" class="list"></div>
+        <div class="choice" role="radiogroup" aria-label="Destino en Figma">
+          <label>
+            <input type="radio" name="destination" value="variables" checked />
+            <span>Variables<small>Crea o actualiza variables de color en este archivo.</small></span>
+          </label>
+          <label>
+            <input type="radio" name="destination" value="frame" />
+            <span>Frame<small>Dibuja todas las rampas elegidas en un solo frame de esta página.</small></span>
+          </label>
+        </div>
+        <button class="primary" id="import" type="button" disabled>Crear variables</button>
+      </section>
+
+      <section id="icons" class="panel">
+        <p>Elige las colecciones de la carpeta icons. Cada una se coloca en su propio grupo.</p>
+        <button id="load-icons" type="button">Leer de Creator</button>
+        <p id="icons-hint">Pulsa Leer de Creator para ver las colecciones.</p>
+        <div id="collections" class="list"></div>
+        <button class="primary" id="import-icons" type="button" disabled>Importar</button>
+      </section>
+
+      <div class="row">
+        <button id="close" type="button">Cerrar</button>
+      </div>
+      <p class="error" id="error"></p>
+    </main>
+    <script>
+      const PORT = 4317;
+      const setsNode = document.getElementById("sets");
+      const collectionsNode = document.getElementById("collections");
+      const errorNode = document.getElementById("error");
+      let file = null;
+      let creatorFile = null;
+      let collections = [];
+      const setsHint = document.getElementById("sets-hint");
+
+      function showError(message) {
+        errorNode.textContent = message || "";
+      }
+
+      function showTab(name) {
+        document.getElementById("tab-colors").classList.toggle("active", name === "colors");
+        document.getElementById("tab-icons").classList.toggle("active", name === "icons");
+        document.getElementById("colors").classList.toggle("active", name === "colors");
+        document.getElementById("icons").classList.toggle("active", name === "icons");
+        showError("");
+      }
+
+      function useJson() {
+        return document.getElementById("use-json").checked;
+      }
+
+      function pastedFile() {
+        const raw = document.getElementById("json").value.trim();
+        if (!raw) return { empty: true };
+        try {
+          const parsed = JSON.parse(raw);
+          if (!parsed || parsed.source !== "creator" || !Array.isArray(parsed.sets)) return { error: true };
+          return { file: parsed };
+        } catch {
+          return { error: true };
+        }
+      }
+
+      function syncConfirm() {
+        const button = document.getElementById("import");
+        button.disabled = !file || selectedIds().length === 0;
+        button.textContent = destination() === "frame" ? "Crear frame" : "Crear variables";
+      }
+
+      function refreshSets() {
+        showError("");
+        if (useJson()) {
+          const result = pastedFile();
+          if (result.empty) {
+            file = null;
+            setsHint.hidden = false;
+            setsHint.textContent = "Pega el JSON copiado en Creator.";
+          } else if (result.error) {
+            file = null;
+            setsHint.hidden = true;
+            showError("Ese texto no es un JSON de Creator.");
+          } else {
+            file = result.file;
+            setsHint.hidden = true;
+          }
+        } else {
+          file = creatorFile;
+          setsHint.hidden = Boolean(file);
+          setsHint.textContent = "Pulsa Leer de Creator para ver las collections.";
+        }
+        renderSets();
+      }
+
+      function renderSets() {
+        setsNode.innerHTML = "";
+        if (file) {
+          file.sets.forEach((set) => {
+            const label = document.createElement("label");
+            const input = document.createElement("input");
+            input.type = "checkbox";
+            input.checked = true;
+            input.dataset.id = set.id;
+            input.onchange = syncConfirm;
+            const name = document.createElement("strong");
+            name.textContent = set.name;
+            const meta = document.createElement("em");
+            meta.textContent = `${set.variables.length} colores`;
+            label.append(input, name, meta);
+            setsNode.appendChild(label);
+          });
+        }
+        syncConfirm();
+      }
+
+      function syncIconsConfirm() {
+        document.getElementById("import-icons").disabled = selectedCollections().length === 0;
+      }
+
+      function renderCollections() {
+        collectionsNode.innerHTML = "";
+        document.getElementById("icons-hint").hidden = collections.length > 0;
+        collections.forEach((collection) => {
+          const label = document.createElement("label");
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.checked = true;
+          input.dataset.name = collection.name;
+          input.onchange = syncIconsConfirm;
+          const name = document.createElement("strong");
+          name.textContent = collection.name;
+          const meta = document.createElement("em");
+          meta.textContent = `${collection.count} iconos`;
+          label.append(input, name, meta);
+          collectionsNode.appendChild(label);
+        });
+        syncIconsConfirm();
+      }
+
+      function destination() {
+        const checked = document.querySelector('input[name="destination"]:checked');
+        return checked && checked.value === "frame" ? "frame" : "variables";
+      }
+
+      function selectedIds() {
+        return [...setsNode.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.dataset.id);
+      }
+
+      function selectedCollections() {
+        return [...collectionsNode.querySelectorAll("input:checked")].map((input) => input.dataset.name);
+      }
+
+      function send(current) {
+        parent.postMessage({
+          pluginMessage: {
+            type: "import",
+            file: current,
+            setIds: selectedIds(),
+            destination: destination(),
+          },
+        }, "*");
+      }
+
+      document.querySelectorAll('input[name="destination"]').forEach((input) => {
+        input.onchange = syncConfirm;
+      });
+
+      document.getElementById("use-json").onchange = () => {
+        document.getElementById("json-box").hidden = !useJson();
+        refreshSets();
+      };
+
+      document.getElementById("json").oninput = () => {
+        if (useJson()) refreshSets();
+      };
+
+      document.getElementById("tab-colors").onclick = () => showTab("colors");
+      document.getElementById("tab-icons").onclick = () => showTab("icons");
+
+      document.getElementById("load").onclick = async () => {
+        showError("");
+        try {
+          const response = await fetch(`http://localhost:${PORT}/api/export`);
+          if (!response.ok) throw new Error("Creator no ha respondido.");
+          creatorFile = await response.json();
+          document.getElementById("use-json").checked = false;
+          document.getElementById("json-box").hidden = true;
+          refreshSets();
+        } catch {
+          showError("No llego a Creator. Ábrelo con npm run dev o marca Pegar JSON.");
+        }
+      };
+
+      document.getElementById("import").onclick = () => {
+        showError("");
+        if (!file) {
+          showError(useJson() ? "Pega un JSON de Creator." : "Pulsa Leer de Creator antes de crear.");
+          return;
+        }
+        if (selectedIds().length === 0) {
+          showError("Elige al menos una collection.");
+          return;
+        }
+        send(file);
+      };
+
+      document.getElementById("load-icons").onclick = async () => {
+        showError("");
+        try {
+          const response = await fetch(`http://localhost:${PORT}/api/icons`);
+          if (!response.ok) throw new Error("Creator no ha respondido.");
+          const body = await response.json();
+          collections = Array.isArray(body.collections) ? body.collections : [];
+          renderCollections();
+          if (collections.length === 0) showError("No hay carpetas dentro de icons.");
+        } catch {
+          showError("No llego a Creator. Ábrelo con npm run dev.");
+        }
+      };
+
+      document.getElementById("import-icons").onclick = async () => {
+        showError("");
+        const names = selectedCollections();
+        if (names.length === 0) {
+          showError("Elige al menos una colección.");
+          return;
+        }
+        try {
+          const imported = [];
+          for (const name of names) {
+            const response = await fetch(`http://localhost:${PORT}/api/icons/${encodeURIComponent(name)}/figma`);
+            if (!response.ok) throw new Error(`No se pudo leer ${name}.`);
+            const body = await response.json();
+            if (!body || !Array.isArray(body.icons) || body.icons.length === 0) continue;
+            imported.push({ name: body.collection || name, icons: body.icons });
+          }
+          if (imported.length === 0) throw new Error("Las colecciones elegidas no tienen iconos.");
+          parent.postMessage({ pluginMessage: { type: "import-icons", collections: imported } }, "*");
+        } catch (error) {
+          showError(error instanceof Error ? error.message : "No llego a Creator. Ábrelo con npm run dev.");
+        }
+      };
+
+      document.getElementById("close").onclick = () => {
+        parent.postMessage({ pluginMessage: { type: "close" } }, "*");
+      };
+
+      onmessage = (event) => {
+        const message = event.data.pluginMessage;
+        if (message && message.type === "error") showError(message.message);
+      };
+    </script>
+  </body>
+</html>

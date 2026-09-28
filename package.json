@@ -1,0 +1,32 @@
+{
+  "name": "creator",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server/index.ts",
+    "build": "vite build",
+    "start": "NODE_ENV=production tsx server/index.ts",
+    "check": "tsc --noEmit && tsx shared/selfcheck.ts"
+  },
+  "dependencies": {
+    "culori": "^4.0.2",
+    "express": "^4.21.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "svgtofont": "^6.5.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
+  }
+}
