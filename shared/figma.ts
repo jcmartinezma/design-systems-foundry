@@ -19,25 +19,25 @@ export function fileKeyFromUrl(input: string): string | null {
 
 export function explainFigmaError(status: number, message: string): string {
   if (status === 401) {
-    return "El token no es válido o ha caducado. Genera otro en Figma → Settings → Security.";
+    return "The token is invalid or has expired. Create another one in Figma → Settings → Security.";
   }
   if (status === 404) {
-    return "No encuentro ese archivo. Revisa el enlace y que el token pueda verlo.";
+    return "That file could not be found. Check the link and that the token can see it.";
   }
   if (status === 403) {
     if (/plan/i.test(message)) {
-      return "La API de variables solo funciona en el plan Enterprise de Figma. Usa el plugin local: no necesita ese plan.";
+      return "The variables API only works on Figma’s Enterprise plan. Use the local plugin: it does not need that plan.";
     }
     if (/account/i.test(message)) {
-      return "Esta cuenta no tiene un asiento Full de una organización Enterprise. Usa el plugin local.";
+      return "This account does not have a Full seat in an Enterprise organization. Use the local plugin.";
     }
     if (/scope/i.test(message)) {
-      return "Al token le faltan los permisos file_variables:read y file_variables:write.";
+      return "The variables REST API is Enterprise only. On a Professional plan Figma rejects the token as if file_variables:read and file_variables:write were missing, because those scopes cannot be enabled outside Enterprise. Use the local plugin. If your organization is already Enterprise, create the token again and enable those two scopes.";
     }
     if (/permission/i.test(message)) {
-      return "No tienes permiso de edición en ese archivo de Figma.";
+      return "You do not have edit access to that Figma file.";
     }
-    return `Figma ha rechazado la petición (${message}). Si no estás en Enterprise, usa el plugin local.`;
+    return `Figma rejected the request (${message}). If you are not on Enterprise, use the local plugin.`;
   }
-  return message || `Figma ha respondido con el error ${status}.`;
+  return message || `Figma responded with error ${status}.`;
 }

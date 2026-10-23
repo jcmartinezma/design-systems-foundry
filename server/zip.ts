@@ -13,7 +13,7 @@ export function zipStore(entries: ZipEntry[]): Buffer {
 
   for (const entry of entries) {
     if (entry.name.includes("..") || entry.name.includes("/") || entry.name.includes("\\")) {
-      throw new Error("Nombre de archivo no permitido dentro del ZIP.");
+      throw new Error("File name not allowed inside the ZIP.");
     }
     const name = Buffer.from(entry.name, "utf8");
     const crc = crc32(entry.data);

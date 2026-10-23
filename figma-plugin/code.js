@@ -1,6 +1,6 @@
 const PORT = 4317;
 
-figma.showUI(__html__, { width: 380, height: 620, themeColors: true });
+figma.showUI(__html__, { width: 400, height: 680, themeColors: true });
 
 figma.ui.onmessage = async (message) => {
   if (message.type === "close") {
@@ -8,22 +8,64 @@ figma.ui.onmessage = async (message) => {
     return;
   }
 
-  if (message.type === "import-icons" && Array.isArray(message.collections)) {
+  if (message.type === "import-type" && message.file && Array.isArray(message.file.collections)) {
     try {
-      const placed = await placeIcons(message.collections);
-      figma.notify(`Creator: ${placed.ok} iconos en la página${placed.failed ? `, ${placed.failed} omitidos` : ""}`);
+      const selected = new Set(message.collectionIds || []);
+      const collections = message.file.collections.filter((item) => selected.size === 0 || selected.has(item.id));
+      const result = await importTypeStyles(collections, message.groupName);
+      const parts = [`${result.created} new styles`, `${result.updated} updated`];
+      if (result.linked) parts.push(`${result.linked} with a token`);
+      if (result.removed) parts.push(`${result.removed} duplicates removed`);
+      figma.notify(`DSfoundry: ${parts.join(", ")}`);
       figma.closePlugin();
     } catch (error) {
       figma.ui.postMessage({
         type: "error",
-        message: error instanceof Error ? error.message : "No se pudieron colocar los iconos.",
+        message: error instanceof Error ? error.message : "Could not create the text styles.",
+      });
+    }
+    return;
+  }
+
+  if (message.type === "create") {
+    try {
+      const sets = message.file && Array.isArray(message.file.sets) ? message.file.sets : [];
+      const variableResult = await importVariableSets(sets);
+      let typeResult = null;
+      const typeCollections =
+        message.includeStyles && message.typeFile && Array.isArray(message.typeFile.collections)
+          ? message.typeFile.collections
+          : [];
+      const selectedTypes = new Set(message.collectionIds || []);
+      const collections = typeCollections.filter((item) => selectedTypes.size === 0 || selectedTypes.has(item.id));
+      if (collections.length > 0) typeResult = await importTypeStyles(collections, message.groupName);
+      const variableCount = sets.reduce(
+        (sum, set) => sum + (set && Array.isArray(set.variables) ? set.variables.length : 0),
+        0,
+      );
+      if (variableCount === 0 && !typeResult) throw new Error("Choose at least one group to create.");
+      const parts = [];
+      if (variableCount > 0) {
+        parts.push(`${variableResult.created} new variables`, `${variableResult.updated} updated`);
+        if (variableResult.skipped) parts.push(`${variableResult.skipped} skipped`);
+      }
+      if (typeResult) {
+        parts.push(`${typeResult.created} new styles`, `${typeResult.updated} styles updated`);
+        if (typeResult.linked) parts.push(`${typeResult.linked} linked to a token`);
+      }
+      figma.notify(`DSfoundry: ${parts.join(", ")}`);
+      figma.closePlugin();
+    } catch (error) {
+      figma.ui.postMessage({
+        type: "error",
+        message: error instanceof Error ? error.message : "Could not create the selection.",
       });
     }
     return;
   }
 
   if (message.type !== "import" || !message.file || !Array.isArray(message.file.sets)) {
-    figma.ui.postMessage({ type: "error", message: "El JSON no viene de Creator." });
+    figma.ui.postMessage({ type: "error", message: "The JSON does not come from DSfoundry." });
     return;
   }
 
@@ -32,62 +74,87 @@ figma.ui.onmessage = async (message) => {
     const sets = message.file.sets.filter((set) => selected.size === 0 || selected.has(set.id));
     if (message.destination === "frame") {
       const count = await paintRamps(sets);
-      figma.notify(`Creator: ${count} colores en un frame`);
+      figma.notify(`DSfoundry: ${count} colors in a frame`);
       figma.closePlugin();
       return;
     }
-    let created = 0;
-    let updated = 0;
+    const result = await importVariableSets(sets);
+    const parts = [`${result.created} new`, `${result.updated} updated`];
+    if (result.skipped) parts.push(`${result.skipped} skipped`);
+    figma.notify(`DSfoundry: ${parts.join(", ")}`);
+    figma.closePlugin();
+  } catch (error) {
+    figma.ui.postMessage({
+      type: "error",
+      message: error instanceof Error ? error.message : "Could not create the variables.",
+    });
+  }
+};
 
-    const collections = await figma.variables.getLocalVariableCollectionsAsync();
-    const variables = await figma.variables.getLocalVariablesAsync("COLOR");
+async function importVariableSets(sets) {
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+  const usable = (sets || []).filter((set) => set && Array.isArray(set.variables) && set.variables.length > 0);
+  if (usable.length === 0) return { created, updated, skipped };
 
-    for (const set of sets) {
-      let collection = collections.find((item) => item.name === set.name);
-      let modeId;
-      if (!collection) {
-        collection = figma.variables.createVariableCollection(set.name);
-        collections.push(collection);
-        modeId = collection.modes[0].modeId;
-        collection.renameMode(modeId, "Default");
-      } else {
-        modeId = collection.defaultModeId;
+  const collections = await figma.variables.getLocalVariableCollectionsAsync();
+  const variables = [];
+  for (const kind of ["COLOR", "FLOAT", "STRING"]) {
+    variables.push(...(await figma.variables.getLocalVariablesAsync(kind)));
+  }
+
+  for (const set of usable) {
+    let collection = collections.find((item) => item.name === set.name);
+    let modeId;
+    if (!collection) {
+      collection = figma.variables.createVariableCollection(set.name);
+      collections.push(collection);
+      modeId = collection.modes[0].modeId;
+      collection.renameMode(modeId, "Default");
+    } else {
+      modeId = collection.defaultModeId;
+    }
+
+    const byName = new Map(
+      variables
+        .filter((variable) => variable.variableCollectionId === collection.id)
+        .map((variable) => [variable.name, variable]),
+    );
+
+    for (const item of set.variables) {
+      const kind = item.type === "FLOAT" || item.type === "STRING" ? item.type : "COLOR";
+      let variable = byName.get(item.name);
+      if (variable && variable.resolvedType !== kind) {
+        skipped += 1;
+        continue;
       }
-
-      const byName = new Map(
-        variables
-          .filter((variable) => variable.variableCollectionId === collection.id)
-          .map((variable) => [variable.name, variable]),
-      );
-
-      for (const item of set.variables) {
-        let variable = byName.get(item.name);
-        if (!variable) {
-          variable = figma.variables.createVariable(item.name, collection, "COLOR");
-          created += 1;
-        } else {
-          updated += 1;
-        }
-        variable.description = item.description || "";
-        variable.setVariableCodeSyntax("WEB", item.code || "");
+      if (!variable) {
+        variable = figma.variables.createVariable(item.name, collection, kind);
+        byName.set(item.name, variable);
+        created += 1;
+      } else {
+        updated += 1;
+      }
+      variable.description = item.description || "";
+      if (item.code) variable.setVariableCodeSyntax("WEB", item.code);
+      if (kind === "COLOR" && item.color) {
         variable.setValueForMode(modeId, {
           r: item.color.r,
           g: item.color.g,
           b: item.color.b,
           a: 1,
         });
+      } else if (kind === "FLOAT" && Number.isFinite(Number(item.number))) {
+        variable.setValueForMode(modeId, Number(item.number));
+      } else if (kind === "STRING") {
+        variable.setValueForMode(modeId, String(item.text ?? ""));
       }
     }
-
-    figma.notify(`Creator: ${created} nuevas, ${updated} actualizadas`);
-    figma.closePlugin();
-  } catch (error) {
-    figma.ui.postMessage({
-      type: "error",
-      message: error instanceof Error ? error.message : "No se pudieron crear las variables.",
-    });
   }
-};
+
+  return { created, updated, skipped };
+}
 
 function appendSized(parent, node, horizontal, vertical) {
   parent.appendChild(node);
@@ -113,8 +180,9 @@ function wrappingRow(name, width) {
 function rampsOf(set) {
   const groups = new Map();
   for (const item of set.variables || []) {
-    if (!item || !item.color) continue;
-    const name = String(item.name || "color/valor");
+    if (!item || !item.color || item.type === "FLOAT" || item.type === "STRING") continue;
+    let name = String(item.name || "color/value");
+    if (name.startsWith("color/")) name = name.slice("color/".length);
     const slash = name.indexOf("/");
     const rampName = slash === -1 ? set.name : name.slice(0, slash);
     const step = slash === -1 ? name : name.slice(slash + 1);
@@ -137,9 +205,9 @@ function placeBesideContent(node) {
 
 async function paintRamps(sets) {
   const usable = sets
-    .map((set) => ({ name: String(set.name || "Colores"), ramps: rampsOf(set) }))
+    .map((set) => ({ name: String(set.name || "Colors"), ramps: rampsOf(set) }))
     .filter((set) => set.ramps.length > 0);
-  if (usable.length === 0) throw new Error("Las collections elegidas no tienen colores.");
+  if (usable.length === 0) throw new Error("The chosen collections have no colors.");
 
   let fontReady = false;
   try {
@@ -149,7 +217,7 @@ async function paintRamps(sets) {
     fontReady = false;
   }
 
-  const baseName = usable.length === 1 ? usable[0].name : "Rampas";
+  const baseName = usable.length === 1 ? usable[0].name : "Ramps";
   const taken = new Set(figma.currentPage.children.map((child) => child.name));
   let frameName = baseName;
   let suffix = 2;
@@ -249,113 +317,258 @@ function label(characters, size, color) {
   return text;
 }
 
-async function placeIcons(collections) {
-  const usable = collections.filter(
-    (collection) => collection && typeof collection.name === "string" && Array.isArray(collection.icons) && collection.icons.length > 0,
-  );
-  if (usable.length === 0) throw new Error("Creator no ha enviado iconos.");
+function normToken(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s*\/\s*/g, "/")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-  let fontReady = false;
-  try {
-    await figma.loadFontAsync({ family: "Inter", style: "Regular" });
-    fontReady = true;
-  } catch {
-    fontReady = false;
+const TEXT_SCOPE = {
+  fontSize: "FONT_SIZE",
+  lineHeight: "LINE_HEIGHT",
+  letterSpacing: "LETTER_SPACING",
+  fontFamily: "FONT_FAMILY",
+  fontStyle: "FONT_STYLE",
+  fontWeight: "FONT_WEIGHT",
+};
+
+function variableAllows(variable, field) {
+  const numberField = field === "fontFamily" || field === "fontStyle" ? false : true;
+  if (numberField && variable.resolvedType !== "FLOAT") return false;
+  if (!numberField && variable.resolvedType !== "STRING") return false;
+  const scopes = Array.isArray(variable.scopes) ? variable.scopes : [];
+  if (scopes.length === 0 || scopes.includes("ALL_SCOPES")) return true;
+  return scopes.includes(TEXT_SCOPE[field]);
+}
+
+function variableScopedTo(variable, field) {
+  const scopes = Array.isArray(variable.scopes) ? variable.scopes : [];
+  return scopes.includes(TEXT_SCOPE[field]);
+}
+
+function indexTextTokens(variables, collections) {
+  const names = new Map(collections.map((collection) => [collection.id, collection.name]));
+  const index = new Map();
+  function add(key, variable) {
+    const normalized = normToken(key);
+    if (!normalized) return;
+    const list = index.get(normalized) || [];
+    list.push(variable);
+    index.set(normalized, list);
   }
+  for (const variable of variables) {
+    if (!variable || (variable.resolvedType !== "FLOAT" && variable.resolvedType !== "STRING")) continue;
+    add(variable.name, variable);
+    const group = names.get(variable.variableCollectionId);
+    if (group) add(`${group}/${variable.name}`, variable);
+  }
+  return index;
+}
 
-  const board = figma.createFrame();
-  board.name = usable.length === 1 ? usable[0].name : "Iconografía";
-  board.layoutMode = "VERTICAL";
-  board.primaryAxisSizingMode = "AUTO";
-  board.counterAxisSizingMode = "AUTO";
-  board.itemSpacing = 32;
-  board.paddingLeft = 32;
-  board.paddingRight = 32;
-  board.paddingTop = 32;
-  board.paddingBottom = 32;
-  board.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
-  figma.currentPage.appendChild(board);
+function firstToken(index, keys, field, openScope) {
+  for (const key of keys) {
+    for (const variable of index.get(normToken(key)) || []) {
+      if (!variableAllows(variable, field)) continue;
+      if (!openScope && !variableScopedTo(variable, field)) continue;
+      return variable;
+    }
+  }
+  return null;
+}
 
-  let ok = 0;
-  let failed = 0;
+function tokensForStyle(index, collectionName, styleName, figmaName) {
+  const group = collectionName;
+  const style = styleName;
+  const named = [figmaName, `${group}/${style}`];
+  const found = new Map();
+  const size = firstToken(index, [
+    ...named,
+    `${group}/font-size/${style}`,
+    `${group}/size/${style}`,
+    `${group}/font/size/${style}`,
+    `font-size/${style}`,
+    `size/${style}`,
+    `text/${style}`,
+    `typography/${style}`,
+    `font/size/${style}`,
+    `font/${style}`,
+  ], "fontSize", true);
+  if (size) found.set("fontSize", size);
+
+  const line = firstToken(index, [
+    `${group}/font/line-height/${style}`,
+    `font/line-height/${style}`,
+    `${group}/line-height/${style}`,
+    `${group}/leading/${style}`,
+    `line-height/${style}`,
+    `leading/${style}`,
+  ], "lineHeight", true) || firstToken(index, named, "lineHeight", false);
+  if (line && line !== size) found.set("lineHeight", line);
+
+  const tracking = firstToken(index, [
+    `${group}/letter-spacing/${style}`,
+    `${group}/tracking/${style}`,
+    `letter-spacing/${style}`,
+    `tracking/${style}`,
+  ], "letterSpacing", true) || firstToken(index, named, "letterSpacing", false);
+  if (tracking) found.set("letterSpacing", tracking);
+
+  const family = firstToken(index, [
+    `${group}/font/family/${style}`,
+    `font/family/${style}`,
+    `${group}/font-family/${style}`,
+    `${group}/font-family`,
+    `font-family/${style}`,
+    `font-family`,
+  ], "fontFamily", true) || firstToken(index, named, "fontFamily", false);
+  if (family) found.set("fontFamily", family);
+
+  const fontStyle = firstToken(index, [
+    `${group}/font/style/${style}`,
+    `font/style/${style}`,
+    `${group}/font-style/${style}`,
+    `${group}/font-style`,
+    `font-style/${style}`,
+    `font-style`,
+  ], "fontStyle", true) || firstToken(index, named, "fontStyle", false);
+  if (fontStyle) found.set("fontStyle", fontStyle);
+
+  const weight = firstToken(index, [
+    `${group}/font/weight/${style}`,
+    `font/weight/${style}`,
+    `${group}/font-weight/${style}`,
+    `${group}/font-weight`,
+    `font-weight/${style}`,
+    `font-weight`,
+    `weight/${style}`,
+  ], "fontWeight", true) || firstToken(index, named, "fontWeight", false);
+  if (weight) found.set("fontWeight", weight);
+
+  return found;
+}
+
+function bindTokens(style, tokens) {
+  let applied = 0;
+  for (const [field, variable] of tokens) {
+    try {
+      style.setBoundVariable(field, variable);
+      applied += 1;
+    } catch {
+      // The token is there, but this field cannot take it. The plain value stays.
+    }
+  }
+  return applied;
+}
+
+function indexLocalStyles(styles) {
+  const groups = new Map();
+  for (const style of styles) {
+    const key = normToken(style.name);
+    if (!key) continue;
+    const list = groups.get(key) || [];
+    list.push(style);
+    groups.set(key, list);
+  }
+  const byKey = new Map();
+  let removed = 0;
+  for (const [key, list] of groups) {
+    byKey.set(key, list[0]);
+    for (const extra of list.slice(1)) {
+      try {
+        extra.remove();
+        removed += 1;
+      } catch {
+        // Figma kept this copy. The next sync still updates the one we keep.
+      }
+    }
+  }
+  return { byKey, removed };
+}
+
+function styleFace(item, collection) {
+  const family = String((item && item.fontFamily) || (collection && collection.fontFamily) || "Inter").trim() || "Inter";
+  const style = String((item && item.fontStyle) || (collection && collection.fontStyle) || "Regular").trim() || "Regular";
+  const line = Math.round(Number((item && item.lineHeightPercent) || (collection && collection.lineHeightPercent)) || 140);
+  return { family, style, line };
+}
+
+function faceKey(face) {
+  return `${face.family} ${face.style}`;
+}
+
+function cleanSegment(value, fallback) {
+  const clean = String(value || "").replace(/[./{}]/g, " ").replace(/\s+/g, " ").trim().slice(0, 48);
+  return clean || fallback;
+}
+
+async function importTypeStyles(collections, groupName) {
+  const group = cleanSegment(groupName, "Text");
+  const usable = collections.filter(
+    (collection) => collection && Array.isArray(collection.styles) && collection.styles.length > 0,
+  );
+  if (usable.length === 0) throw new Error("The chosen collections have no styles.");
 
   for (const collection of usable) {
-    const section = usable.length === 1 ? board : figma.createFrame();
-    if (section !== board) {
-      section.name = collection.name;
-      section.layoutMode = "VERTICAL";
-      section.primaryAxisSizingMode = "AUTO";
-      section.counterAxisSizingMode = "AUTO";
-      section.itemSpacing = 16;
-      section.fills = [];
-      if (fontReady) {
-        const title = figma.createText();
-        title.fontName = { family: "Inter", style: "Regular" };
-        title.fontSize = 20;
-        title.characters = collection.name;
-        title.fills = [{ type: "SOLID", color: { r: 0.1, g: 0.1, b: 0.1 } }];
-        section.appendChild(title);
-        title.layoutSizingHorizontal = "HUG";
-        title.layoutSizingVertical = "HUG";
+    const faces = new Map();
+    for (const item of collection.styles) faces.set(faceKey(styleFace(item, collection)), styleFace(item, collection));
+    if (faces.size === 0) faces.set("Inter Regular", { family: "Inter", style: "Regular", line: 140 });
+    for (const face of faces.values()) {
+      try {
+        await figma.loadFontAsync({ family: face.family, style: face.style });
+      } catch {
+        throw new Error(
+          `Cannot find the font “${face.family} ${face.style}”. Install it on this computer, or use Inter Regular, which Figma already includes.`,
+        );
       }
-      appendSized(board, section, "HUG", "HUG");
-    }
-
-    const groups = new Map();
-    for (const icon of collection.icons) {
-      if (!icon || typeof icon.svg !== "string" || typeof icon.file !== "string" || typeof icon.size !== "number") continue;
-      const list = groups.get(icon.size) || [];
-      list.push(icon);
-      groups.set(icon.size, list);
-    }
-
-    for (const size of [...groups.keys()].sort((a, b) => a - b)) {
-      const block = figma.createFrame();
-      block.name = `${size}px`;
-      block.layoutMode = "VERTICAL";
-      block.primaryAxisSizingMode = "AUTO";
-      block.counterAxisSizingMode = "AUTO";
-      block.itemSpacing = 12;
-      block.fills = [];
-
-      if (fontReady) {
-        const title = figma.createText();
-        title.fontName = { family: "Inter", style: "Regular" };
-        title.fontSize = 14;
-        title.characters = `${size}px`;
-        title.fills = [{ type: "SOLID", color: { r: 0.2, g: 0.2, b: 0.2 } }];
-        block.appendChild(title);
-        title.layoutSizingHorizontal = "HUG";
-        title.layoutSizingVertical = "HUG";
-      }
-
-      const grid = wrappingRow(`rejilla ${size}`, 960);
-      grid.itemSpacing = 12;
-      grid.counterAxisSpacing = 12;
-      appendSized(block, grid, "FIXED", "HUG");
-      appendSized(section, block, "HUG", "HUG");
-
-      const items = groups.get(size).sort((a, b) => String(a.name || a.file).localeCompare(String(b.name || b.file)));
-      for (const icon of items) {
-        try {
-          const iconName = String(icon.file).replace(/\.svg$/, "");
-          const node = figma.createNodeFromSvg(icon.svg);
-          node.name = iconName;
-          grid.appendChild(node);
-          const component = figma.createComponentFromNode(node);
-          component.name = `${collection.name}/${iconName}`;
-          if (!component.parent) grid.appendChild(component);
-          component.layoutSizingHorizontal = "FIXED";
-          component.layoutSizingVertical = "FIXED";
-          ok += 1;
-        } catch {
-          failed += 1;
-        }
-      }
-      grid.counterAxisSizingMode = "AUTO";
     }
   }
 
-  figma.viewport.scrollAndZoomIntoView([board]);
-  return { ok, failed };
+  const { byKey, removed } = indexLocalStyles(await figma.getLocalTextStylesAsync());
+  let tokens = new Map();
+  try {
+    const [variables, variableCollections] = await Promise.all([
+      figma.variables.getLocalVariablesAsync(),
+      figma.variables.getLocalVariableCollectionsAsync(),
+    ]);
+    tokens = indexTextTokens(variables, variableCollections);
+  } catch {
+    tokens = new Map();
+  }
+
+  let created = 0;
+  let updated = 0;
+  let linked = 0;
+
+  for (const collection of usable) {
+    for (const item of collection.styles) {
+      const leaf = cleanSegment(item.name, "");
+      const size = Number(item.size);
+      if (!leaf || !Number.isFinite(size) || size < 1) continue;
+      const face = styleFace(item, collection);
+      const styleName = `${group}/${leaf}`;
+      const key = normToken(styleName);
+      let style = byKey.get(key);
+      if (!style) {
+        style = figma.createTextStyle();
+        byKey.set(key, style);
+        created += 1;
+      } else {
+        updated += 1;
+      }
+      style.name = styleName;
+      style.fontName = { family: face.family, style: face.style };
+      style.fontSize = size;
+      style.lineHeight = { unit: "PERCENT", value: face.line };
+      style.description = String(item.description || "");
+      const matched = tokensForStyle(tokens, group, leaf, styleName);
+      if (bindTokens(style, matched) > 0) linked += 1;
+    }
+  }
+
+  if (created + updated === 0) throw new Error("There were no valid styles to create.");
+  return { created, updated, linked, removed };
 }

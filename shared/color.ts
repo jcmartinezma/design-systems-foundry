@@ -95,12 +95,6 @@ export function namesForCount(count: number): string[] {
   return names;
 }
 
-export function referenceBackground(ramp: Ramp): string {
-  if (ramp.apcaBackground === "black") return "#000000";
-  if (ramp.apcaBackground === "custom") return normalizeHex(ramp.apcaCustomHex) ?? "#ffffff";
-  return "#ffffff";
-}
-
 function chromaAt(ramp: Ramp, t: number): number {
   if (!ramp.easeChroma) return ramp.chroma;
   const bell = Math.sin(Math.PI * clamp(t, 0, 1));
@@ -121,51 +115,6 @@ function contrastAgainst(color: SolvedColor, backgroundHex: string): number {
   return apcaContrast(color.channels, channelsFromHex(backgroundHex));
 }
 
-function backgroundIsLight(backgroundHex: string): boolean {
-  const parsed = parse(backgroundHex);
-  const oklch = parsed ? toOklch(parsed) : null;
-  return (oklch?.l ?? 1) >= 0.55;
-}
-
-function findLightness(
-  hue: number,
-  chroma: number,
-  backgroundHex: string,
-  targetLc: number,
-): { color: SolvedColor; lc: number } {
-  let best = fromOklch(0.5, chroma, hue);
-  let bestLc = contrastAgainst(best, backgroundHex);
-  let bestError = Math.abs(bestLc - targetLc);
-
-  for (let index = 0; index <= 48; index += 1) {
-    const lightness = index / 48;
-    const color = fromOklch(lightness, chroma, hue);
-    const lc = contrastAgainst(color, backgroundHex);
-    const error = Math.abs(lc - targetLc);
-    if (error < bestError) {
-      best = color;
-      bestLc = lc;
-      bestError = error;
-    }
-  }
-
-  let low = clamp(best.l - 1 / 48, 0, 1);
-  let high = clamp(best.l + 1 / 48, 0, 1);
-  for (let pass = 0; pass < 10; pass += 1) {
-    const left = low + (high - low) / 3;
-    const right = high - (high - low) / 3;
-    const leftColor = fromOklch(left, chroma, hue);
-    const rightColor = fromOklch(right, chroma, hue);
-    const leftError = Math.abs(contrastAgainst(leftColor, backgroundHex) - targetLc);
-    const rightError = Math.abs(contrastAgainst(rightColor, backgroundHex) - targetLc);
-    if (leftError < rightError) high = right;
-    else low = left;
-  }
-
-  const color = fromOklch((low + high) / 2, chroma, hue);
-  return { color, lc: contrastAgainst(color, backgroundHex) };
-}
-
 function lerp(from: number, to: number, t: number): number {
   return from + (to - from) * t;
 }
@@ -184,33 +133,11 @@ export function suggestStepName(names: string[]): string {
 
 export function generateStops(ramp: Ramp): Stop[] {
   const names = ramp.stepNames.length > 0 ? ramp.stepNames : namesForCount(11);
-  const background = referenceBackground(ramp);
-  const lightBackground = backgroundIsLight(background);
   const last = Math.max(names.length - 1, 1);
 
   return names.map((step, index) => {
     const t = index / last;
     const chroma = chromaAt(ramp, t);
-
-    if (ramp.algorithm === "apca") {
-      const min = Math.min(ramp.apcaMin, ramp.apcaMax);
-      const max = Math.max(ramp.apcaMin, ramp.apcaMax);
-      const magnitude = lightBackground ? lerp(min, max, t) : lerp(max, min, t);
-      const targetLc = (lightBackground ? 1 : -1) * magnitude;
-      const solved = findLightness(ramp.hue, chroma, background, targetLc);
-      return {
-        step,
-        hex: solved.color.hex,
-        l: solved.color.l,
-        c: solved.color.c,
-        h: solved.color.h,
-        clipped: solved.color.clipped,
-        rgb: solved.color.rgb,
-        lc: solved.lc,
-        targetLc,
-      };
-    }
-
     const lightness = lerp(ramp.lightnessLight, ramp.lightnessDark, t);
     const color = fromOklch(lightness, chroma, ramp.hue);
     return {
@@ -230,4 +157,75 @@ export function generateStops(ramp: Ramp): Stop[] {
 export function lcLabel(value: number): string {
   const rounded = Math.round(value);
   return rounded > 0 ? `+${rounded}` : String(rounded);
+}
+
+function linearChannel(value: number): number {
+  const channel = value <= 1 ? value : value / 255;
+  return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+export type ContrastTest = "none" | "wcag" | "apca";
+export type ContrastGround = "white" | "black" | "custom";
+
+/** Background for the shared contrast test. Black is the near-black used by the Contrast table. */
+export function contrastBackgroundHex(ground: ContrastGround, customHex: string): string {
+  if (ground === "black") return "#111111";
+  if (ground === "custom") return normalizeHex(customHex) ?? "#ffffff";
+  return "#ffffff";
+}
+
+/** WCAG 2.2 contrast ratio. Channels can be 0–1 or 0–255. Ratios did not change in 2.2. */
+export function wcagContrast(
+  a: { r: number; g: number; b: number },
+  b: { r: number; g: number; b: number },
+): number {
+  const luminance = (rgb: { r: number; g: number; b: number }) =>
+    0.2126 * linearChannel(rgb.r) + 0.7152 * linearChannel(rgb.g) + 0.0722 * linearChannel(rgb.b);
+  const lighter = Math.max(luminance(a), luminance(b));
+  const darker = Math.min(luminance(a), luminance(b));
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/** WCAG 2.2 text grades. 4.5 is AA for normal text, 3 is AA for large text, 7 is AAA. */
+export function wcagGrade(ratio: number): string {
+  if (ratio >= 7) return "AAA";
+  if (ratio >= 4.5) return "AA";
+  if (ratio >= 3) return "AA large";
+  return "Fail";
+}
+
+/** APCA Lc bands used for body text, large text, and non-text UI. */
+export function apcaGrade(lc: number): string {
+  const magnitude = Math.abs(lc);
+  if (magnitude >= 75) return "Body";
+  if (magnitude >= 60) return "Large";
+  if (magnitude >= 45) return "UI";
+  return "Low";
+}
+
+/** Score of one color against a background. WCAG returns the ratio. APCA returns Lc. */
+export function contrastVerdict(
+  rgb: { r: number; g: number; b: number },
+  backgroundHex: string,
+  test: Exclude<ContrastTest, "none">,
+): { score: string; grade: string; passes: boolean } {
+  const background = channelsFromHex(backgroundHex);
+  const text = {
+    r: Math.round((rgb.r <= 1 ? rgb.r : rgb.r / 255) * 255),
+    g: Math.round((rgb.g <= 1 ? rgb.g : rgb.g / 255) * 255),
+    b: Math.round((rgb.b <= 1 ? rgb.b : rgb.b / 255) * 255),
+  };
+
+  if (test === "wcag") {
+    const ratio = wcagContrast(
+      { r: text.r / 255, g: text.g / 255, b: text.b / 255 },
+      { r: background.r / 255, g: background.g / 255, b: background.b / 255 },
+    );
+    const grade = wcagGrade(ratio);
+    return { score: ratio.toFixed(2), grade, passes: grade !== "Fail" };
+  }
+
+  const lc = apcaContrast(text, background);
+  const grade = apcaGrade(lc);
+  return { score: lcLabel(lc), grade, passes: grade !== "Low" };
 }

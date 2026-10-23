@@ -1,4 +1,4 @@
-import type { ExportSet } from "../shared/types";
+import type { ExportSet, ExportVariable, ExportVariableType } from "../shared/types";
 import { explainFigmaError, fileKeyFromUrl } from "../shared/figma";
 
 type FigmaColor = { r: number; g: number; b: number; a: number };
@@ -30,6 +30,7 @@ export type PublishResult = {
   name: string;
   created: number;
   updated: number;
+  skipped: number;
 };
 
 async function figmaFetch(token: string, path: string, init?: RequestInit): Promise<Response> {
@@ -54,8 +55,8 @@ async function readError(response: Response): Promise<string> {
 
 export async function testFigmaConnection(token: string, fileUrl: string): Promise<string> {
   const fileKey = fileKeyFromUrl(fileUrl);
-  if (!token.trim()) throw new Error("Falta el token de Figma.");
-  if (!fileKey) throw new Error("El enlace del archivo no parece de Figma. Pega la URL del archivo de diseño.");
+  if (!token.trim()) throw new Error("The Figma token is missing.");
+  if (!fileKey) throw new Error("That link does not look like a Figma file. Paste the design file URL.");
 
   const response = await figmaFetch(token.trim(), `/v1/files/${fileKey}/variables/local`);
   if (!response.ok) {
@@ -65,7 +66,9 @@ export async function testFigmaConnection(token: string, fileUrl: string): Promi
 
   const body = (await response.json()) as LocalResponse;
   const collections = Object.values(body.meta?.variableCollections ?? {}).filter((item) => !item.remote);
-  return `Conexión correcta. El archivo tiene ${collections.length} colección${collections.length === 1 ? "" : "es"} local${collections.length === 1 ? "" : "es"}.`;
+  const count = collections.length;
+  const label = count === 1 ? "local collection" : "local collections";
+  return `Connection works. The file has ${count} ${label}.`;
 }
 
 export async function publishSets(
@@ -74,8 +77,8 @@ export async function publishSets(
   sets: ExportSet[],
 ): Promise<PublishResult[]> {
   const fileKey = fileKeyFromUrl(fileUrl);
-  if (!token.trim()) throw new Error("Guarda un token en Conexiones antes de publicar.");
-  if (!fileKey) throw new Error("Guarda el enlace del archivo de Figma en Conexiones.");
+  if (!token.trim()) throw new Error("Add a personal token on the Export page before publishing.");
+  if (!fileKey) throw new Error("Add the Figma file link on the Export page before publishing.");
 
   const response = await figmaFetch(token.trim(), `/v1/files/${fileKey}/variables/local`);
   if (!response.ok) {
@@ -103,6 +106,7 @@ async function publishSet(
   variables: LocalVariable[],
 ): Promise<PublishResult> {
   const existing = collections.find((collection) => collection.name === set.name);
+  const usable = set.variables.filter((variable) => modeValue(variable) !== null);
 
   if (!existing) {
     const modeId = "mode_default";
@@ -124,28 +128,28 @@ async function publishSet(
           variableCollectionId: collectionId,
         },
       ],
-      variables: set.variables.map((variable, index) => ({
+      variables: usable.map((variable, index) => ({
         action: "CREATE",
         id: `var_${index}`,
         name: variable.name,
         variableCollectionId: collectionId,
-        resolvedType: "COLOR",
+        resolvedType: resolvedType(variable),
         description: variable.description,
         codeSyntax: { WEB: variable.code },
       })),
-      variableModeValues: set.variables.map((variable, index) => ({
+      variableModeValues: usable.map((variable, index) => ({
         variableId: `var_${index}`,
         modeId,
-        value: colorValue(variable.color),
+        value: modeValue(variable),
       })),
     };
     await postVariables(token, fileKey, payload);
-    return { name: set.name, created: set.variables.length, updated: 0 };
+    return { name: set.name, created: usable.length, updated: 0, skipped: set.variables.length - usable.length };
   }
 
   const inCollection = new Map(
     variables
-      .filter((variable) => variable.variableCollectionId === existing.id && variable.resolvedType === "COLOR")
+      .filter((variable) => variable.variableCollectionId === existing.id)
       .map((variable) => [variable.name, variable]),
   );
 
@@ -154,9 +158,15 @@ async function publishSet(
   const values: Record<string, unknown>[] = [];
   let created = 0;
   let updated = 0;
+  let skipped = set.variables.length - usable.length;
 
-  set.variables.forEach((variable, index) => {
+  usable.forEach((variable, index) => {
+    const kind = resolvedType(variable);
     const found = inCollection.get(variable.name);
+    if (found && found.resolvedType !== kind) {
+      skipped += 1;
+      return;
+    }
     if (found) {
       updated += 1;
       updates.push({
@@ -168,7 +178,7 @@ async function publishSet(
       values.push({
         variableId: found.id,
         modeId: existing.defaultModeId,
-        value: colorValue(variable.color),
+        value: modeValue(variable),
       });
       return;
     }
@@ -180,23 +190,41 @@ async function publishSet(
       id: tempId,
       name: variable.name,
       variableCollectionId: existing.id,
-      resolvedType: "COLOR",
+      resolvedType: kind,
       description: variable.description,
       codeSyntax: { WEB: variable.code },
     });
     values.push({
       variableId: tempId,
       modeId: existing.defaultModeId,
-      value: colorValue(variable.color),
+      value: modeValue(variable),
     });
   });
 
-  await postVariables(token, fileKey, {
-    variables: [...updates, ...creates],
-    variableModeValues: values,
-  });
+  if (updates.length > 0 || creates.length > 0) {
+    await postVariables(token, fileKey, {
+      variables: [...updates, ...creates],
+      variableModeValues: values,
+    });
+  }
 
-  return { name: set.name, created, updated };
+  return { name: set.name, created, updated, skipped };
+}
+
+function resolvedType(variable: ExportVariable): ExportVariableType {
+  if (variable.type === "FLOAT" || variable.type === "STRING") return variable.type;
+  return "COLOR";
+}
+
+function modeValue(variable: ExportVariable): unknown {
+  const kind = resolvedType(variable);
+  if (kind === "FLOAT") {
+    const value = Number(variable.number);
+    return Number.isFinite(value) ? value : null;
+  }
+  if (kind === "STRING") return String(variable.text ?? "");
+  if (!variable.color) return null;
+  return colorValue(variable.color);
 }
 
 function colorValue(color: FigmaColor): FigmaColor {

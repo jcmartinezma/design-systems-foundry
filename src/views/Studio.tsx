@@ -1,348 +1,419 @@
 import { useState } from "react";
-import { exportProject } from "../../shared/export";
+import { Plus } from "lucide-react";
+import { contrastBackgroundHex, contrastVerdict, generateStops, type ContrastGround, type ContrastTest } from "../../shared/color";
 import { randomRampName } from "../../shared/names";
-import { createRamp, createSet } from "../../shared/project";
-import type { ColorSet, Project, PublicConnections, Ramp } from "../../shared/types";
+import { colorTokenNames } from "../../shared/export";
+import { createRamp } from "../../shared/project";
+import type { Ramp, Stop } from "../../shared/types";
+import { Inspector } from "../components/Inspector";
 import { RampCard } from "../components/RampCard";
+import { Tabs } from "../components/Tabs";
+
+type Mode = "ramps" | "contrast";
 
 type Props = {
-  project: Project;
-  connections: PublicConnections;
-  saveState: "saved" | "saving" | "error" | "loading";
-  onChange: (project: Project) => void;
+  colors: Ramp[];
+  preview: "light" | "dark";
+  onChange: (colors: Ramp[]) => void;
   onToast: (message: string) => void;
-  onOpenSettings: () => void;
 };
 
-export function Studio({ project, connections, saveState, onChange, onToast, onOpenSettings }: Props) {
-  const active = project.sets.find((set) => set.id === project.activeSetId) ?? null;
-  const [publishing, setPublishing] = useState(false);
-  const [publishNote, setPublishNote] = useState("");
-  const [showSend, setShowSend] = useState(false);
-  const [confirmSet, setConfirmSet] = useState<string | null>(null);
-
-  function updateProject(next: Project) {
-    setPublishNote("");
-    onChange(next);
-  }
-
-  function selectSet(id: string) {
-    updateProject({ ...project, activeSetId: id });
-  }
-
-  function addSet() {
-    const set = createSet("Nueva collection");
-    updateProject({ ...project, activeSetId: set.id, sets: [...project.sets, set] });
-  }
-
-  function renameSet(name: string) {
-    if (!active) return;
-    updateProject({
-      ...project,
-      sets: project.sets.map((set) => (set.id === active.id ? { ...set, name } : set)),
-    });
-  }
-
-  function deleteSet(id: string) {
-    const sets = project.sets.filter((set) => set.id !== id);
-    updateProject({
-      ...project,
-      sets,
-      activeSetId: project.activeSetId === id ? (sets[0]?.id ?? null) : project.activeSetId,
-    });
-  }
-
-  function updateRamp(rampId: string, ramp: Ramp) {
-    if (!active) return;
-    updateProject({
-      ...project,
-      sets: project.sets.map((set) =>
-        set.id === active.id
-          ? { ...set, ramps: set.ramps.map((item) => (item.id === rampId ? ramp : item)) }
-          : set,
-      ),
-    });
-  }
+export function Studio({ colors, preview, onChange, onToast }: Props) {
+  const [mode, setMode] = useState<Mode>("ramps");
+  const [rampId, setRampId] = useState<string | null>(colors[0]?.id ?? null);
+  const [stopIndex, setStopIndex] = useState(0);
+  const [contrastTest, setContrastTest] = useState<ContrastTest>("none");
+  const [contrastGround, setContrastGround] = useState<ContrastGround>("white");
+  const [contrastCustomHex, setContrastCustomHex] = useState("#f4f4f5");
+  const contrastBackground = contrastBackgroundHex(contrastGround, contrastCustomHex);
+  const ramp = colors.find((item) => item.id === rampId) ?? colors[0] ?? null;
 
   function addRamp() {
-    if (!active) return;
-    const last = active.ramps.at(-1);
-    const ramp = createRamp(randomRampName(active.ramps.map((ramp) => ramp.name)), {
+    const last = colors[0];
+    const next = createRamp(randomRampName(colors.map((item) => item.name)), {
       hue: ((last?.hue ?? 220) + 28) % 360,
       chroma: last?.chroma ?? 0.14,
-      algorithm: last?.algorithm ?? "oklch",
+      lightnessLight: last?.lightnessLight ?? 0.97,
+      lightnessDark: last?.lightnessDark ?? 0.22,
     });
-    patchActive({ ...active, ramps: [...active.ramps, ramp] });
+    onChange([next, ...colors]);
+    setRampId(next.id);
+    setStopIndex(0);
   }
 
-  function duplicateRamp(ramp: Ramp) {
-    if (!active) return;
-    const copy = createRamp(`${ramp.name} copia`, {
-      hue: ramp.hue,
-      chroma: ramp.chroma,
-      stepNames: [...ramp.stepNames],
-      easeChroma: ramp.easeChroma,
-      algorithm: ramp.algorithm,
-      lightnessLight: ramp.lightnessLight,
-      lightnessDark: ramp.lightnessDark,
-      apcaBackground: ramp.apcaBackground,
-      apcaCustomHex: ramp.apcaCustomHex,
-      apcaMin: ramp.apcaMin,
-      apcaMax: ramp.apcaMax,
-    });
-    const index = active.ramps.findIndex((item) => item.id === ramp.id);
-    const ramps = [...active.ramps];
-    ramps.splice(index + 1, 0, copy);
-    patchActive({ ...active, ramps });
+  function updateRamp(next: Ramp) {
+    onChange(colors.map((item) => (item.id === next.id ? next : item)));
   }
 
-  function deleteRamp(rampId: string) {
-    if (!active) return;
-    patchActive({ ...active, ramps: active.ramps.filter((ramp) => ramp.id !== rampId) });
-  }
-
-  function moveRamp(index: number, direction: -1 | 1) {
-    if (!active) return;
-    const next = index + direction;
-    if (next < 0 || next >= active.ramps.length) return;
-    const ramps = [...active.ramps];
-    const [item] = ramps.splice(index, 1);
-    if (!item) return;
-    ramps.splice(next, 0, item);
-    patchActive({ ...active, ramps });
-  }
-
-  function patchActive(set: ColorSet) {
-    updateProject({
-      ...project,
-      sets: project.sets.map((item) => (item.id === set.id ? set : item)),
-    });
-  }
-
-  const duplicateNames = new Set<string>();
-  if (active) {
-    const seen = new Set<string>();
-    for (const ramp of active.ramps) {
-      const key = ramp.name.trim().toLowerCase();
-      if (!key) continue;
-      if (seen.has(key)) duplicateNames.add(key);
-      seen.add(key);
-    }
-  }
-
-  async function copyJson() {
-    const json = JSON.stringify(exportProject(project), null, 2);
-    await navigator.clipboard.writeText(json);
-    onToast("JSON copiado");
-  }
-
-  const canPublish = connections.figma.hasToken && connections.figma.fileUrl.trim().length > 0;
-
-  async function publishApi() {
-    if (!active) return;
-    if (!canPublish) return;
-    setPublishing(true);
-    setPublishNote("");
-    try {
-      const response = await fetch("/api/figma/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ setIds: [active.id] }),
-      });
-      const body = (await response.json()) as {
-        ok?: boolean;
-        error?: string;
-        results?: { name: string; created: number; updated: number }[];
-      };
-      if (!response.ok || !body.ok) {
-        setPublishNote(body.error || "No se pudo publicar.");
-        return;
-      }
-      const result = body.results?.[0];
-      setPublishNote(
-        result
-          ? `Publicado en «${result.name}»: ${result.created} nuevas y ${result.updated} actualizadas.`
-          : "Publicado en Figma.",
-      );
-      setShowSend(false);
-    } catch {
-      setPublishNote("No hay conexión con el servidor local.");
-    } finally {
-      setPublishing(false);
-    }
-  }
-
-  const statusLabel =
-    saveState === "saving" ? "Guardando…" : saveState === "error" ? "No se pudo guardar" : "Guardado en este ordenador";
+  const stops = ramp ? generateStops(ramp) : [];
+  const index = Math.min(stopIndex, Math.max(stops.length - 1, 0));
+  const stop = stops[index] ?? null;
 
   return (
-    <div className="workspace">
-      <aside className="sidebar">
-        <header>
-          <span>Collections</span>
-          <button onClick={addSet} title="Nueva collection">
-            +
-          </button>
-        </header>
-        <div className="set-list">
-          {project.sets.map((set) => (
-            <div key={set.id} className={set.id === active?.id ? "set active" : "set"}>
-              <button onClick={() => selectSet(set.id)}>
-                <strong>{set.name || "Sin nombre"}</strong>
-                <em>
-                  {set.ramps.length} {set.ramps.length === 1 ? "rampa" : "rampas"}
-                </em>
-              </button>
-              <button
-                className="icon"
-                title="Borrar collection"
-                onClick={() => {
-                  if (confirmSet !== set.id) {
-                    setConfirmSet(set.id);
-                    window.setTimeout(() => setConfirmSet((current) => (current === set.id ? null : current)), 2200);
-                    return;
-                  }
-                  deleteSet(set.id);
-                  setConfirmSet(null);
-                }}
-              >
-                {confirmSet === set.id ? "?" : "✕"}
+    <div className="foundation">
+      <div className="foundation-main">
+        <div className="mode-tabs">
+          <Tabs
+            label="Color"
+            value={mode}
+            tabs={[
+              { id: "ramps", label: "Ramps" },
+              { id: "contrast", label: "Contrast Summary" },
+            ]}
+            onChange={setMode}
+          />
+          {mode === "ramps" && colors.length > 0 ? (
+            <div className="mode-bar">
+              <ContrastFilter
+                test={contrastTest}
+                ground={contrastGround}
+                customHex={contrastCustomHex}
+                onTest={setContrastTest}
+                onGround={setContrastGround}
+                onCustomHex={setContrastCustomHex}
+              />
+              <button type="button" className="add" onClick={addRamp}>
+                <Plus size={14} />
+                New ramp
               </button>
             </div>
-          ))}
-          {project.sets.length === 0 ? <p className="empty-side">Todavía no hay collections.</p> : null}
+          ) : null}
         </div>
-      </aside>
 
-      <section className="editor">
-        {active ? (
-          <>
-            <header className="editor-bar">
-              <div>
-                <input
-                  className="title-input"
-                  aria-label="Nombre de la collection"
-                  value={active.name}
-                  spellCheck={false}
-                  onChange={(event) => renameSet(event.target.value)}
-                />
-                <p className="status">{statusLabel}</p>
+        {mode === "ramps" ? (
+          colors.length === 0 || !ramp ? (
+            <div className="blank">
+              <h1>This system has no ramps</h1>
+              <p>Add the first color scale. Steps run from 50, the lightest, to 950, the darkest.</p>
+              <button type="button" onClick={addRamp}>
+                <Plus size={14} />
+                New ramp
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="hint ramp-hint">
+                Every ramp is built in OKLCH: the hue stays and lightness runs from the light step to the dark step.
+              </p>
+              <div className="ramp-list">
+                {colors.map((item, at) => (
+                  <RampCard
+                    key={item.id}
+                    ramp={item}
+                    canMoveUp={at > 0}
+                    canMoveDown={at < colors.length - 1}
+                    selectedIndex={item.id === ramp.id ? index : null}
+                    contrastTest={contrastTest}
+                    contrastBackground={contrastBackground}
+                    onSelectStop={(nextIndex) => {
+                      setRampId(item.id);
+                      setStopIndex(nextIndex);
+                    }}
+                    onChange={updateRamp}
+                    onDuplicate={() => {
+                      const copy = createRamp(`${item.name} copy`, {
+                        hue: item.hue,
+                        chroma: item.chroma,
+                        stepNames: [...item.stepNames],
+                        easeChroma: item.easeChroma,
+                        lightnessLight: item.lightnessLight,
+                        lightnessDark: item.lightnessDark,
+                      });
+                      const next = [...colors];
+                      next.splice(at + 1, 0, copy);
+                      onChange(next);
+                      setRampId(copy.id);
+                      setStopIndex(0);
+                    }}
+                    onDelete={() => {
+                      const next = colors.filter((entry) => entry.id !== item.id);
+                      onChange(next);
+                      if (ramp.id === item.id) setRampId(next[0]?.id ?? null);
+                    }}
+                    onMove={(direction) => {
+                      const to = at + direction;
+                      if (to < 0 || to >= colors.length) return;
+                      const next = [...colors];
+                      const [moved] = next.splice(at, 1);
+                      if (!moved) return;
+                      next.splice(to, 0, moved);
+                      onChange(next);
+                    }}
+                    onToast={onToast}
+                  />
+                ))}
               </div>
-              {active.ramps.length > 0 ? (
-                <div className="bar-actions">
-                  <button onClick={addRamp}>
-                    <PlusIcon />
-                    Nueva rampa
-                  </button>
-                  <button onClick={() => void copyJson()}>Copiar JSON</button>
-                  <button className="primary" onClick={() => setShowSend(true)}>
-                    Enviar a Figma
-                  </button>
-                </div>
-              ) : null}
-            </header>
+            </>
+          )
+        ) : null}
 
-            {active.ramps.length === 0 ? (
-              <div className="blank">
-                <h1>Esta collection no tiene rampas</h1>
-                <p>
-                  Una rampa es una escala de un mismo color. Le pones un nombre, eliges el tono y defines los pasos que
-                  después puedes enviar a Figma.
-                </p>
-                <button className="primary" onClick={addRamp}>
-                  <PlusIcon />
-                  Nueva rampa
-                </button>
-              </div>
-            ) : (
-              <>
-            {showSend ? (
-              <div className="callout send-options">
-                <div>
-                  <strong>Plugin</strong>
-                  <p>
-                    La collection está guardada aquí. En Figma abre el plugin <b>Creator</b>, pulsa <b>Leer de Creator</b>,
-                    marca las collections, elige <b>Variables</b> o <b>Frame</b> y confirma. Frame dibuja todas las
-                    rampas elegidas en un solo frame de la página actual. Si Figma no llega a localhost, marca{" "}
-                    <b>Pegar JSON</b>.
-                  </p>
-                  <div className="row">
-                    <button
-                      onClick={() => {
-                        setShowSend(false);
-                        onOpenSettings();
-                      }}
-                    >
-                      Ver instalación
-                    </button>
-                    <button onClick={() => void copyJson()}>Copiar JSON</button>
-                  </div>
-                </div>
-                <div>
-                  <strong>API REST</strong>
-                  <p>Publica esta collection en el archivo guardado en Settings.</p>
-                  {canPublish ? (
-                    <button className="primary" disabled={publishing} onClick={() => void publishApi()}>
-                      {publishing ? "Publicando…" : "Publicar collection"}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setShowSend(false);
-                        onOpenSettings();
-                      }}
-                    >
-                      Configurar token y archivo
-                    </button>
-                  )}
-                </div>
-                <div className="row">
-                  <button onClick={() => setShowSend(false)}>Cerrar</button>
-                </div>
-              </div>
-            ) : null}
-
-            {publishNote ? <p className={publishNote.startsWith("Publicado") ? "ok" : "warn"}>{publishNote}</p> : null}
-            {duplicateNames.size > 0 ? (
-              <p className="warn">Hay rampas con el mismo nombre. En Figma quedarían en el mismo grupo.</p>
-            ) : null}
-
-            <div className="ramp-list">
-              {active.ramps.map((ramp, index) => (
-                <RampCard
-                  key={ramp.id}
-                  ramp={ramp}
-                  canMoveUp={index > 0}
-                  canMoveDown={index < active.ramps.length - 1}
-                  onChange={(next) => updateRamp(ramp.id, next)}
-                  onDuplicate={() => duplicateRamp(ramp)}
-                  onDelete={() => deleteRamp(ramp.id)}
-                  onMove={(direction) => moveRamp(index, direction)}
-                  onToast={onToast}
+        {mode === "contrast" ? (
+          colors.length === 0 || !ramp ? (
+            <div className="blank">
+              <h1>This system has no ramps</h1>
+              <p>Add a color scale on Ramps before checking contrast.</p>
+            </div>
+          ) : (
+            <div className="zone">
+              <p className="eyebrow">Contrast</p>
+              <p className="hint">
+                Every ramp, each step on white and near-black. The sample uses that step’s color, the same as the swatches.
+                Green passes the same bar. Red fails it. The marked column follows the Light/Dark preview.
+              </p>
+              {colors.map((item) => (
+                <ContrastTable
+                  key={item.id}
+                  ramp={item}
+                  stops={generateStops(item)}
+                  preview={preview}
+                  selectedIndex={item.id === ramp.id ? index : -1}
+                  onSelect={(next) => {
+                    setRampId(item.id);
+                    setStopIndex(next);
+                  }}
                 />
               ))}
             </div>
-              </>
-            )}
-          </>
+          )
+        ) : null}
+      </div>
+
+      <Inspector title="Token">
+        {ramp && stop ? (
+          <StopInspector ramp={ramp} stop={stop} onToast={onToast} />
         ) : (
-          <div className="blank">
-            <h1>Rampas</h1>
-            <p>Una collection agrupa varias rampas. Cada rampa es una escala con nombre, lista para llevar a Figma.</p>
-            <button className="primary" onClick={addSet}>
-              Crear la primera collection
-            </button>
-          </div>
+          <p className="inspector-note">Select a step on the scale.</p>
         )}
-      </section>
+      </Inspector>
     </div>
   );
 }
 
-function PlusIcon() {
+function StopInspector({ ramp, stop, onToast }: { ramp: Ramp; stop: Stop; onToast: (message: string) => void }) {
+  const token = colorTokenNames(ramp.name, stop.step);
+
+  async function copyHex() {
+    try {
+      await navigator.clipboard.writeText(stop.hex);
+      onToast(`${stop.hex} copied`);
+    } catch {
+      onToast("Could not copy the hex.");
+    }
+  }
+
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-      <path d="M6 1.5v9M1.5 6h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
+    <>
+      <div className="inspector-token">
+        <i className="swatch lg" style={{ background: stop.hex }} />
+        <div>
+          <strong title="Name in Figma">{token.name}</strong>
+          <p title="Name in CSS">{token.code}</p>
+          <button type="button" className="hex-copy" title="Copy hex" onClick={() => void copyHex()}>
+            {stop.hex}
+          </button>
+        </div>
+      </div>
+      <dl className="lch">
+        <div>
+          <dt>L</dt>
+          <dd>{stop.l.toFixed(3)}</dd>
+        </div>
+        <div>
+          <dt>C</dt>
+          <dd>{stop.c.toFixed(3)}</dd>
+        </div>
+        <div>
+          <dt>H</dt>
+          <dd>{Math.round(stop.h)}</dd>
+        </div>
+      </dl>
+      <div className="contrast-pair">
+        <h3>WCAG</h3>
+        <InspectorScore label="On white" stop={stop} ground="white" test="wcag" />
+        <InspectorScore label="On black" stop={stop} ground="black" test="wcag" />
+        <h3>APCA</h3>
+        <InspectorScore label="On white" stop={stop} ground="white" test="apca" />
+        <InspectorScore label="On black" stop={stop} ground="black" test="apca" />
+      </div>
+      {stop.clipped ? <p className="inspector-note">Chroma was reduced so this step fits in sRGB.</p> : null}
+    </>
+  );
+}
+
+function InspectorScore({
+  label,
+  stop,
+  ground,
+  test,
+}: {
+  label: string;
+  stop: Stop;
+  ground: "white" | "black";
+  test: "wcag" | "apca";
+}) {
+  const verdict = contrastVerdict(stop.rgb, ground === "white" ? "#ffffff" : "#111111", test);
+  return (
+    <p>
+      {label}{" "}
+      <span className={verdict.passes ? "verdict pass" : "verdict fail"}>
+        {verdict.score} {verdict.grade}
+      </span>
+    </p>
+  );
+}
+
+function ContrastTable({
+  ramp,
+  stops,
+  preview,
+  selectedIndex,
+  onSelect,
+}: {
+  ramp: Ramp;
+  stops: Stop[];
+  preview: "light" | "dark";
+  selectedIndex: number;
+  onSelect: (index: number) => void;
+}) {
+  const ink = (stop: Stop) => (stop.l > 0.68 ? "#1a1a1a" : "#f5f5f5");
+  return (
+    <section className="contrast-ramp">
+      <h2>{ramp.name || "Color"}</h2>
+      <div className="table-wrap">
+        <table className="contrast-table">
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th className={preview === "light" ? "is-preview" : ""}>WCAG white</th>
+              <th className={preview === "dark" ? "is-preview" : ""}>WCAG black</th>
+              <th className={preview === "light" ? "is-preview" : ""}>APCA white</th>
+              <th className={preview === "dark" ? "is-preview" : ""}>APCA black</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stops.map((stop, index) => (
+              <tr key={`${stop.step}-${index}`} className={index === selectedIndex ? "selected" : ""} onClick={() => onSelect(index)}>
+                <td>
+                  <span className="contrast-chip" style={{ background: stop.hex, color: ink(stop) }}>
+                    {stop.step}
+                  </span>
+                </td>
+                <td className={preview === "light" ? "is-preview" : ""}>
+                  <ContrastScore stop={stop} ground="white" test="wcag" />
+                </td>
+                <td className={preview === "dark" ? "is-preview" : ""}>
+                  <ContrastScore stop={stop} ground="black" test="wcag" />
+                </td>
+                <td className={preview === "light" ? "is-preview" : ""}>
+                  <ContrastScore stop={stop} ground="white" test="apca" />
+                </td>
+                <td className={preview === "dark" ? "is-preview" : ""}>
+                  <ContrastScore stop={stop} ground="black" test="apca" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function ContrastScore({ stop, ground, test }: { stop: Stop; ground: "white" | "black"; test: "wcag" | "apca" }) {
+  const background = ground === "white" ? "#ffffff" : "#111111";
+  const verdict = contrastVerdict(stop.rgb, background, test);
+  return (
+    <span className="contrast-score">
+      <span className="sample" style={{ background, color: stop.hex }} title={`${stop.hex} on ${ground}`}>
+        Aa
+      </span>
+      <span className={verdict.passes ? "verdict pass" : "verdict fail"}>
+        {verdict.score} {verdict.grade}
+      </span>
+    </span>
+  );
+}
+
+function ContrastFilter({
+  test,
+  ground,
+  customHex,
+  onTest,
+  onGround,
+  onCustomHex,
+}: {
+  test: ContrastTest;
+  ground: ContrastGround;
+  customHex: string;
+  onTest: (test: ContrastTest) => void;
+  onGround: (ground: ContrastGround) => void;
+  onCustomHex: (hex: string) => void;
+}) {
+  return (
+    <div className="contrast-filter">
+      <div className="contrast-field">
+        <span>Contrast test</span>
+        <div className="segment" role="group" aria-label="Contrast test">
+          {(
+            [
+              ["wcag", "WCAG"],
+              ["apca", "APCA"],
+              ["none", "None"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={test === value ? "active" : ""}
+              title={
+                value === "wcag"
+                  ? "WCAG 2.2 contrast ratio. 4.5 is AA for normal text."
+                  : value === "apca"
+                    ? "APCA Lc. About 75 is body text, 60 is large text, 45 is UI."
+                    : "Hide the text samples and scores."
+              }
+              onClick={() => onTest(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {test === "none" ? null : (
+        <div className="contrast-field">
+          <span>Background</span>
+          <div className="segment" role="group" aria-label="Contrast background">
+            {(
+              [
+                ["white", "White"],
+                ["black", "Black"],
+                ["custom", "Other"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={ground === value ? "active" : ""}
+                title={value === "black" ? "Near-black, the same background as the Contrast table." : undefined}
+                onClick={() => onGround(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {test !== "none" && ground === "custom" ? (
+        <label className="picker">
+          <span>Background color</span>
+          <input
+            type="color"
+            value={customHex}
+            aria-label="Custom contrast background"
+            onChange={(event) => onCustomHex(event.target.value)}
+          />
+        </label>
+      ) : null}
+    </div>
   );
 }
