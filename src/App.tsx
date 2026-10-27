@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { activeSystem, cloneSystem, createSystem, normalizeProject, systemsFromJson } from "../shared/project";
+import { activeSystem, cloneSystem, createDefaultProject, createSystem, normalizeProject, systemsFromJson } from "../shared/project";
 import type { DesignSystem, Project, SystemStatus } from "../shared/types";
 import { CommandPalette } from "./components/CommandPalette";
 import { LibraryPage, useLibrarySearchFocus } from "./components/LibraryPage";
 import { Rail } from "./components/Rail";
 import { SystemNav } from "./components/SystemNav";
 import { TopBar } from "./components/TopBar";
-import { forgetExportConnection } from "./exportConnection";
+import { forgetAllExportConnections, forgetExportConnection } from "./exportConnection";
+import { enablePublish } from "./features";
+import { clearStoredProject, readStoredProject, writeStoredProject } from "./projectStorage";
 import { isFoundation, type SectionId } from "./sections";
 import { AboutView } from "./views/About";
 import { ShadowView } from "./views/Shadow";
@@ -25,7 +27,7 @@ type Theme = "light" | "dark";
 
 function readTheme(): Theme {
   try {
-    const stored = localStorage.getItem("dsfoundry.theme");
+    const stored = localStorage.getItem("foundry.theme");
     if (stored === "light" || stored === "dark") return stored;
   } catch {
     /* Storage can be blocked. The app still starts in dark. */
@@ -56,13 +58,19 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = preview;
     try {
-      localStorage.setItem("dsfoundry.theme", preview);
+      localStorage.setItem("foundry.theme", preview);
     } catch {
       /* Ignore a blocked write. The choice still applies for this visit. */
     }
   }, [preview]);
 
   useEffect(() => {
+    if (!enablePublish) {
+      // Hosted build: every visitor keeps their own systems in this browser only.
+      setProject(readStoredProject());
+      return;
+    }
+
     let cancelled = false;
     fetch("/api/project")
       .then((response) => readJson<Project>(response))
@@ -87,6 +95,15 @@ export function App() {
     }
     setSaveState("saving");
     const timer = window.setTimeout(() => {
+      if (!enablePublish) {
+        try {
+          writeStoredProject(project);
+          setSaveState("saved");
+        } catch {
+          setSaveState("error");
+        }
+        return;
+      }
       fetch("/api/project", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -204,6 +221,15 @@ export function App() {
     setToast("System deleted");
   }
 
+  function resetApp() {
+    forgetAllExportConnections();
+    if (!enablePublish) clearStoredProject();
+    setPreview("dark");
+    setProject(createDefaultProject());
+    setScreen({ kind: "library" });
+    setToast("Everything was deleted");
+  }
+
   function dismissTemp() {
     const id = project?.tempSystemId ?? null;
     patchProject((current) => ({ ...current, tempSystemId: null }));
@@ -309,13 +335,13 @@ export function App() {
         onOpen={openSystem}
         onDismissTemp={dismissTemp}
         onBlank={addBlank}
-        onImport={(file) => void importFile(file)}
+        onImport={enablePublish ? (file) => void importFile(file) : () => undefined}
         onAbout={() => setScreen({ kind: "about" })}
       />
 
       {loadError || !project ? (
         <main className="boot">
-          <h1>DS Foundry</h1>
+          <h1>Foundry</h1>
           <p>{loadError || "Loading the local project…"}</p>
         </main>
       ) : (
@@ -336,7 +362,8 @@ export function App() {
               }}
               canDelete={project.systems.length > 1}
               onBlank={addBlank}
-              onImport={(file) => void importFile(file)}
+              onImport={enablePublish ? (file) => void importFile(file) : () => undefined}
+              onReset={resetApp}
             />
           ) : screen.kind === "about" ? (
             <AboutView theme={preview} onTheme={setPreview} />

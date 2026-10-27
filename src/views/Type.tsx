@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
+import { RangeInput } from "../components/RangeInput";
 import {
   familyTokenName,
   MAX_FAMILIES,
@@ -36,9 +37,8 @@ export function TypeView({ scale, onChange }: Props) {
         <div className="type-layout">
           <div className="type-options">
           <p className="hint">
-            This page defines <b>font/</b> primitives. A primitive is a raw value, such as a size or a family name. It is
-            not a text style. Size and height start at the base. Each step above multiplies both by the ratio. Each step
-            below divides by it. Weights are not chosen here. Export writes <b>font/weight/01</b> as 200, then 02 as 300, 03 as 400, and so on up to 08 as 900.
+            This page defines font primitives. It is
+            not a text style. Size and height start at the base.
           </p>
 
           <div className="type-controls">
@@ -71,32 +71,6 @@ export function TypeView({ scale, onChange }: Props) {
               </span>
             </label>
             <label>
-              <span>Steps above the base</span>
-              <input
-                type="number"
-                min={0}
-                max={MAX_STEPS}
-                step={1}
-                value={scale.stepsAbove}
-                onChange={(event) =>
-                  onChange({ ...scale, stepsAbove: clampInt(numberOr(event.target.value, scale.stepsAbove), 0, MAX_STEPS) })
-                }
-              />
-            </label>
-            <label>
-              <span>Steps below the base</span>
-              <input
-                type="number"
-                min={0}
-                max={MAX_STEPS}
-                step={1}
-                value={scale.stepsBelow}
-                onChange={(event) =>
-                  onChange({ ...scale, stepsBelow: clampInt(numberOr(event.target.value, scale.stepsBelow), 0, MAX_STEPS) })
-                }
-              />
-            </label>
-            <label>
               <span>Ratio</span>
               <select
                 value={scale.ratioId}
@@ -110,19 +84,15 @@ export function TypeView({ scale, onChange }: Props) {
               </select>
             </label>
             {scale.ratioId === "custom" ? (
-              <label>
-                <span>Custom ratio</span>
-                <input
-                  type="number"
-                  min={1.05}
-                  max={2}
-                  step={0.001}
-                  value={scale.customRatio}
-                  onChange={(event) =>
-                    onChange({ ...scale, customRatio: numberOr(event.target.value, scale.customRatio) })
-                  }
-                />
-              </label>
+              <SliderField
+                label="Custom ratio"
+                min={1.05}
+                max={2}
+                step={0.001}
+                digits={3}
+                value={scale.customRatio}
+                onChange={(value) => onChange({ ...scale, customRatio: value })}
+              />
             ) : null}
             <label className="check">
               <input
@@ -137,12 +107,29 @@ export function TypeView({ scale, onChange }: Props) {
             Base is {scale.baseSize} px size and {scale.baseHeight} rem height. The next step is × {ratio.toFixed(3)}.
             {scale.wholePixels ? " Size rounds to the nearest pixel." : " Size keeps one decimal."} Height stays in rem.
           </p>
+          <div className="type-controls">
+            <SliderField
+              label="Steps above the base"
+              min={0}
+              max={MAX_STEPS}
+              step={1}
+              value={scale.stepsAbove}
+              onChange={(value) => onChange({ ...scale, stepsAbove: clampInt(value, 0, MAX_STEPS) })}
+            />
+            <SliderField
+              label="Steps below the base"
+              min={0}
+              max={MAX_STEPS}
+              step={1}
+              value={scale.stepsBelow}
+              onChange={(value) => onChange({ ...scale, stepsBelow: clampInt(value, 0, MAX_STEPS) })}
+            />
+          </div>
 
           <section className="type-block">
             <h2>Families</h2>
             <p>
-              Add up to three font names. The order is the primitive: the first is <b>font/family/font-1</b>, then
-              font-2 and font-3. The name you type, for example Inter, is the value.
+              Add up to three font names. The first font is the preview font.
             </p>
             <div className="type-list">
               {scale.families.map((family, index) => (
@@ -202,33 +189,74 @@ export function TypeView({ scale, onChange }: Props) {
               not styles: you cannot name them or assign a role.
             </p>
             <div className="type-scale">
-              {steps.map((step) => (
-                <article key={step.step} className={step.step === 0 ? "type-row is-base" : "type-row"}>
-                  <div className="type-row-bar">
-                    <span className="type-key">font/size/{step.name}</span>
-                    <span className="type-meta">{step.size} px</span>
-                    <span className="type-key">font/height/{step.name}</span>
-                    <span className="type-meta">{step.height} rem</span>
-                    {step.step === 0 ? <span className="type-base-tag">Base</span> : null}
-                  </div>
-                  <p
-                    className="type-sample"
-                    style={{
-                      fontFamily: face.family,
-                      fontWeight: face.weight,
-                      fontSize: step.size,
-                      lineHeight: `${step.height * REM_PX}px`,
-                    }}
+              {steps.map((step) => {
+                const linePx = step.height * REM_PX;
+                // When font-size is taller than line-height, glyphs paint outside the
+                // line box. Pad each side by half that overflow so rows don't collide.
+                const glyphPad = Math.max(0, (step.size - linePx) / 2);
+                return (
+                  <article
+                    key={step.step}
+                    className={step.step === 0 ? "type-row is-base" : "type-row"}
+                    style={{ ["--type-size" as string]: `${step.size}px` }}
                   >
-                    {preview}
-                  </p>
-                </article>
-              ))}
+                    <div className="type-row-bar">
+                      <span className="type-key">font/size/{step.name}</span>
+                      <span className="type-meta">{step.size} px</span>
+                      <span className="type-key">font/height/{step.name}</span>
+                      <span className="type-meta">{step.height} rem</span>
+                      {step.step === 0 ? <span className="type-base-tag">Base</span> : null}
+                    </div>
+                    <p
+                      className="type-sample"
+                      style={{
+                        fontFamily: face.family,
+                        fontWeight: face.weight,
+                        fontSize: step.size,
+                        lineHeight: `${linePx}px`,
+                        paddingBlock: glyphPad,
+                      }}
+                    >
+                      {preview}
+                    </p>
+                  </article>
+                );
+              })}
             </div>
           </section>
         </div>
       </section>
     </div>
+  );
+}
+
+type SliderFieldProps = {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  unit?: string;
+  digits?: number;
+  onChange: (value: number) => void;
+};
+
+function SliderField({ label, value, min, max, step, unit, digits, onChange }: SliderFieldProps) {
+  const shown = digits === undefined ? String(value) : value.toFixed(digits);
+  return (
+    <label className="slider-field">
+      <span className="slider-top">
+        <span>{label}</span>
+        <output>{unit ? `${shown} ${unit}` : shown}</output>
+      </span>
+      <RangeInput
+        min={min}
+        max={max}
+        step={step}
+        value={Math.min(max, Math.max(min, value))}
+        onChange={(event) => onChange(numberOr(event.target.value, value))}
+      />
+    </label>
   );
 }
 

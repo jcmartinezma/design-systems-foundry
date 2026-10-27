@@ -3,7 +3,7 @@ import type { ShadowLevel, ShadowScale } from "./types";
 const SHADOW_COUNT_MAX = 6;
 
 function shadowKey(place: number): string {
-  return place === 0 ? "0" : String(place * 100);
+  return String((place + 1) * 100);
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -56,24 +56,16 @@ export function generateShadow(input: {
   const baseBlur = clamp(Math.round(finite(input.baseBlur, 2)), 0, 128);
   const baseSpread = clamp(Math.round(finite(input.baseSpread, 0)), -64, 64);
   const ratio = Math.round(clamp(input.ratio, 1.2, 3) * 100) / 100;
-  const levels: ShadowLevel[] = [
-    {
-      id: input.previous?.[0]?.id || crypto.randomUUID(),
-      name: shadowKey(0),
-      y: 0,
-      blur: 0,
-      spread: 0,
-      opacity: keptOpacity(input.previous?.[0], 0),
-    },
-  ];
+  const previousLevels = (input.previous ?? []).filter((level) => !isEmptyShadow(level));
+  const levels: ShadowLevel[] = [];
   for (let index = 0; index < count; index += 1) {
-    const previous = input.previous?.[index + 1];
+    const previous = previousLevels[index];
     const y = Math.round(baseY * ratio ** index);
     const blur = Math.round(baseBlur * ratio ** index);
     const spread = clamp(Math.round(baseSpread * ratio ** index), -64, 64);
     levels.push({
       id: previous?.id || crypto.randomUUID(),
-      name: shadowKey(index + 1),
+      name: shadowKey(index),
       y,
       blur,
       spread,
@@ -112,17 +104,29 @@ function normalizeLevel(raw: Partial<ShadowLevel> | null | undefined, index: num
   };
 }
 
+function isEmptyShadow(level: Partial<ShadowLevel> | null | undefined): boolean {
+  if (!level) return false;
+  const name = String(level.name ?? "");
+  return (
+    (name === "0" || name === "none") &&
+    (Number(level.y) || 0) === 0 &&
+    (Number(level.blur) || 0) === 0 &&
+    (Number(level.spread) || 0) === 0
+  );
+}
+
 export function normalizeShadow(raw: Partial<ShadowScale> | null | undefined): ShadowScale {
   if (!raw) return createShadowScale();
   const count = clamp(Math.round(Number(raw.count) || 5), 1, SHADOW_COUNT_MAX);
-  const levels = Array.isArray(raw.levels) ? raw.levels.slice(0, 8).map((level, index) => normalizeLevel(level, index)) : [];
+  const rawLevels = Array.isArray(raw.levels) ? raw.levels.filter((level) => !isEmptyShadow(level)) : [];
+  const levels = rawLevels.slice(0, SHADOW_COUNT_MAX).map((level, index) => normalizeLevel(level, index));
   return {
     color: normalizeHex(String(raw.color ?? "#000000")),
     baseY: clamp(Math.round(finite(Number(raw.baseY), 1)), 0, 64),
     baseBlur: clamp(Math.round(finite(Number(raw.baseBlur), 2)), 0, 128),
     baseSpread: clamp(Math.round(finite(Number(raw.baseSpread), 0)), -64, 64),
     ratio: Math.round(clamp(Number(raw.ratio) || 2, 1.2, 3) * 100) / 100,
-    count,
+    count: levels.length > 0 ? clamp(levels.length, 1, SHADOW_COUNT_MAX) : count,
     levels: levels.length > 0 ? levels : generateShadow({ baseY: 1, baseBlur: 2, baseSpread: 0, ratio: 2, count }),
   };
 }

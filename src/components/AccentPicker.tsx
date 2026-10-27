@@ -14,7 +14,7 @@ export function AccentPicker(props: Props) {
           key={accent.id}
           type="button"
           role="radio"
-          className="accent-swatch"
+          className={accent.bg === "transparent" ? "accent-swatch none" : "accent-swatch"}
           aria-checked={props.value === accent.id}
           aria-label={accent.label}
           title={accent.label}

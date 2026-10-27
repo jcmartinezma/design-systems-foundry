@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
+import { RangeInput } from "../components/RangeInput";
 import {
   addBorderValue,
   BORDER_COUNT_MAX,
@@ -56,21 +57,9 @@ export function BorderView({ scale, onChange, onToast }: Props) {
         <div className="spacing-layout">
           <div className="spacing-options">
             <p className="hint">
-              Each token is a stroke width. The name <b>border/100</b> is the step’s place in the list, not the number of
-              pixels. Click a value to edit it. A generated scale becomes Custom.
+              Choose the tokens used for border widths. Each token is a stroke width.
             </p>
             <div className="type-controls">
-              <label>
-                <span>Base (px)</span>
-                <CommitNumber
-                  label="Base in pixels"
-                  value={scale.base}
-                  min={1}
-                  max={64}
-                  step={1}
-                  onCommit={(base) => commit(configureBorder(scale, { base: Math.round(base) }))}
-                />
-              </label>
               <div className="mode-field">
                 <span>Scale mode</span>
                 <div className="segment mode-segment" role="radiogroup" aria-label="Scale mode">
@@ -89,11 +78,24 @@ export function BorderView({ scale, onChange, onToast }: Props) {
                 </div>
               </div>
               {scale.mode !== "custom" ? (
-                <label>
-                  <span>Steps · {scale.count}</span>
-                  <div className="base-line">
-                    <input
-                      type="range"
+                <>
+                  <label>
+                    <span>Base (px)</span>
+                    <CommitNumber
+                      label="Base in pixels"
+                      value={scale.base}
+                      min={1}
+                      max={64}
+                      step={1}
+                      onCommit={(base) => commit(configureBorder(scale, { base: Math.round(base) }))}
+                    />
+                  </label>
+                  <label className="slider-field">
+                    <span className="slider-top">
+                      <span>Steps</span>
+                      <output>{scale.count}</output>
+                    </span>
+                    <RangeInput
                       min={BORDER_COUNT_MIN}
                       max={BORDER_COUNT_MAX}
                       step={1}
@@ -101,58 +103,48 @@ export function BorderView({ scale, onChange, onToast }: Props) {
                       value={scale.count}
                       onChange={(event) => commit(configureBorder(scale, { count: Number(event.target.value) }))}
                     />
-                    <CommitNumber
-                      label="Number of steps"
-                      value={scale.count}
-                      min={BORDER_COUNT_MIN}
-                      max={BORDER_COUNT_MAX}
-                      step={1}
-                      onCommit={(count) => commit(configureBorder(scale, { count: Math.round(count) }))}
-                    />
-                  </div>
-                </label>
-              ) : null}
-              {scale.mode === "ratio" ? (
-                <label>
-                  <span>Ratio</span>
-                  <select
-                    aria-label="Ratio"
-                    value={ratioFree ? "custom" : String(presetRatio ?? "custom")}
-                    onChange={(event) => {
-                      if (event.target.value === "custom") {
-                        setRatioFree(true);
-                        return;
-                      }
-                      setRatioFree(false);
-                      commit(configureBorder(scale, { ratio: Number(event.target.value) }));
-                    }}
-                  >
-                    {RATIO_PRESETS.map((ratio) => (
-                      <option key={ratio} value={ratio}>
-                        {ratio}
-                      </option>
-                    ))}
-                    <option value="custom">Custom value</option>
-                  </select>
-                </label>
-              ) : null}
-              {scale.mode === "ratio" && ratioFree ? (
-                <label>
-                  <span>Custom value</span>
-                  <CommitNumber
-                    label="Custom ratio"
-                    value={scale.ratio}
-                    min={1.01}
-                    max={4}
-                    step={0.001}
-                    onCommit={(ratio) => commit(configureBorder(scale, { ratio }))}
-                  />
-                </label>
+                  </label>
+                  {scale.mode === "ratio" ? (
+                    <label>
+                      <span>Ratio</span>
+                      <select
+                        aria-label="Ratio"
+                        value={ratioFree ? "custom" : String(presetRatio ?? "custom")}
+                        onChange={(event) => {
+                          if (event.target.value === "custom") {
+                            setRatioFree(true);
+                            return;
+                          }
+                          setRatioFree(false);
+                          commit(configureBorder(scale, { ratio: Number(event.target.value) }));
+                        }}
+                      >
+                        {RATIO_PRESETS.map((ratio) => (
+                          <option key={ratio} value={ratio}>
+                            {ratio}
+                          </option>
+                        ))}
+                        <option value="custom">Custom value</option>
+                      </select>
+                    </label>
+                  ) : null}
+                  {scale.mode === "ratio" && ratioFree ? (
+                    <label>
+                      <span>Custom value</span>
+                      <CommitNumber
+                        label="Custom ratio"
+                        value={scale.ratio}
+                        min={1.01}
+                        max={4}
+                        step={0.001}
+                        onCommit={(ratio) => commit(configureBorder(scale, { ratio }))}
+                      />
+                    </label>
+                  ) : null}
+                </>
               ) : null}
             </div>
             <p className="status">{MODE_HELP[scale.mode]} A border scale has 2 to 4 steps.</p>
-          </div>
-          <div className="spacing-stage">
             {scale.edited && scale.mode === "custom" ? (
               <div className="callout space-banner">
                 <p>
@@ -163,10 +155,17 @@ export function BorderView({ scale, onChange, onToast }: Props) {
                 </p>
               </div>
             ) : null}
+          </div>
+          <div className="spacing-stage">
             <h2>Preview</h2>
             <div className="space-list">
               {scale.steps.map((step) => (
                 <div key={step.id} className="space-item">
+                  {step.offGrid ? (
+                    <p className="space-note">
+                      Not a multiple of {formatSpacingPx(scale.base / 2)} px. It stays in the scale.
+                    </p>
+                  ) : null}
                   <div className="space-row border-row">
                     <span className="space-token">border/{step.name}</span>
                     <PxField px={step.px} label={`Pixels of border/${step.name}`} onCommit={(raw) => edit(step, raw)} />
@@ -186,11 +185,6 @@ export function BorderView({ scale, onChange, onToast }: Props) {
                     )}
                     <i className="border-swatch" style={{ borderWidth: step.px }} title={`${formatSpacingPx(step.px)} px`} />
                   </div>
-                  {step.offGrid ? (
-                    <p className="space-note">
-                      Not a multiple of {formatSpacingPx(scale.base / 2)} px. It stays in the scale.
-                    </p>
-                  ) : null}
                 </div>
               ))}
             </div>

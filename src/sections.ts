@@ -21,7 +21,7 @@ export function isFoundation(value: string): value is FoundationId {
 }
 
 export function sectionLabel(section: SectionId): string {
-  if (section === "tokens") return "Tokens";
+  if (section === "tokens") return "Tokens Review";
   if (section === "export") return "Export";
   return FOUNDATIONS.find((item) => item.id === section)?.label ?? "Color";
 }

@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { MoreHorizontal, Star } from "lucide-react";
+import { exportSystem } from "../../shared/export";
 import type { DesignSystem, SystemAccent, SystemStatus } from "../../shared/types";
 import { FOUNDATIONS, foundationCount, sectionLabel, statusLabel, type SectionId } from "../sections";
 import { AccentPicker } from "./AccentPicker";
+import { ConfirmModal } from "./ConfirmModal";
 import { useDismiss } from "./useDismiss";
 
 type Props = {
@@ -22,10 +24,10 @@ type Props = {
 export function SystemNav(props: Props) {
   const [menu, setMenu] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const ref = useDismiss(menu, () => {
-    setMenu(false);
-    setConfirmDelete(false);
-  });
+  const ref = useDismiss(menu, () => setMenu(false));
+  const name = props.system.name || "Untitled";
+  // Same list the Tokens Review page shows, before any filter.
+  const tokenTotal = useMemo(() => exportSystem(props.system).sets[0]?.variables.length ?? 0, [props.system]);
   return (
     <aside className="sys-nav">
       <header className="sys-nav-head">
@@ -76,6 +78,7 @@ export function SystemNav(props: Props) {
               </label>
               <p className="popover-label">Color</p>
               <AccentPicker value={props.system.accent} onChange={props.onAccent} />
+              <div className="popover-sep" role="separator" />
               <button type="button" onClick={props.onDuplicate}>
                 Duplicate
               </button>
@@ -84,16 +87,11 @@ export function SystemNav(props: Props) {
                   type="button"
                   className="danger-text"
                   onClick={() => {
-                    if (!confirmDelete) {
-                      setConfirmDelete(true);
-                      return;
-                    }
                     setMenu(false);
-                    setConfirmDelete(false);
-                    props.onDelete();
+                    setConfirmDelete(true);
                   }}
                 >
-                  {confirmDelete ? "Confirm delete" : "Delete system"}
+                  Delete system
                 </button>
               ) : (
                 <p className="popover-note">Create another system before deleting this one.</p>
@@ -102,6 +100,18 @@ export function SystemNav(props: Props) {
           ) : null}
         </div>
       </header>
+      {confirmDelete ? (
+        <ConfirmModal
+          title={`Delete “${name}”?`}
+          description="This permanently removes the system and all of its foundations. It cannot be undone."
+          confirmLabel="Delete system"
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => {
+            setConfirmDelete(false);
+            props.onDelete();
+          }}
+        />
+      ) : null}
 
       <nav className="sys-nav-list">
         <p className="nav-label">Foundations</p>
@@ -132,6 +142,7 @@ export function SystemNav(props: Props) {
             onClick={() => props.onSection(item)}
           >
             <span>{sectionLabel(item)}</span>
+            {item === "tokens" ? <b>{tokenTotal}</b> : null}
           </button>
         ))}
       </nav>

@@ -6,8 +6,16 @@ import { createMotionScale, durationMs, normalizeMotion } from "./motion";
 import { blurDtcg, blurSpecimens, configureBlur, createBlurScale, editBlurValue } from "./blur";
 import { borderDtcg, borderSpecimens, configureBorder, createBorderScale, editBorderValue } from "./border";
 import { createRadiusScale, editRadiusValue, radiusDtcg, radiusSpecimens, configureRadius } from "./radius";
-import { zipStore } from "../server/zip";
-import { createDefaultProject, createRamp, createSet, normalizeProject, normalizeSystem } from "./project";
+import { zipStore } from "./zip";
+import {
+  createDefaultProject,
+  createExampleProject,
+  createRamp,
+  createSet,
+  normalizeProject,
+  normalizeSystem,
+  systemsFromJson,
+} from "./project";
 import {
   createSpacingScale,
   editSpacingValue,
@@ -48,7 +56,13 @@ if (blue.channels.b <= blue.channels.r) {
   throw new Error(`OKLCH 255 no parece azul: ${blue.hex}`);
 }
 
-const project = createDefaultProject();
+if (createDefaultProject().systems.length !== 0 || normalizeProject({}).systems.length !== 0) {
+  throw new Error("Un proyecto nuevo no debería traer ningún sistema.");
+}
+if (normalizeProject({ version: 2, systems: [] }).systems.length !== 0) {
+  throw new Error("Un proyecto vacío no debería recibir un sistema de ejemplo.");
+}
+const project = createExampleProject();
 const oklchRamp = project.systems[0]?.colors[0];
 const apcaRamp = project.systems[0]?.colors[1];
 if (!oklchRamp || !apcaRamp) throw new Error("Faltan rampas de ejemplo");
@@ -63,13 +77,14 @@ if (textStops[0]!.l <= textStops.at(-1)!.l) {
   throw new Error("La rampa de texto debería ir de clara a oscura en OKLCH");
 }
 
-const zip = zipStore([{ name: "hola.txt", data: Buffer.from("hola") }]);
-if (zip.readUInt32LE(0) !== 0x04034b50 || !zip.includes(Buffer.from("hola.txt"))) {
+const zip = zipStore([{ name: "hola.txt", data: new TextEncoder().encode("hola") }]);
+const zipView = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+if (zipView.getUint32(0, true) !== 0x04034b50 || !new TextDecoder().decode(zip).includes("hola.txt")) {
   throw new Error("El ZIP no tiene el formato esperado.");
 }
 let rejected = false;
 try {
-  zipStore([{ name: "../secreto.txt", data: Buffer.from("no") }]);
+  zipStore([{ name: "../secreto.txt", data: new TextEncoder().encode("no") }]);
 } catch {
   rejected = true;
 }
@@ -125,7 +140,7 @@ if (fromPixels.baseHeight !== 1.2) {
 if (figmaTextStyleName("Marca", "cuerpo") !== "Marca/cuerpo") {
   throw new Error("El nombre de estilo de Figma no usa colección/estilo.");
 }
-if (!createDefaultProject().systems[0]?.type.families.length) {
+if (!createExampleProject().systems[0]?.type.families.length) {
   throw new Error("El proyecto de ejemplo no trae una familia tipográfica.");
 }
 const linearBody = generatedSpacingValues("linear", 4, 6, 1.5).join(",");
@@ -142,9 +157,9 @@ if (jumpsBody !== "4,8,12,16,24,32,40,48,64,80") throw new Error(`Con saltos 4 �
 const fibBody = generatedSpacingValues("fibonacci", 4, 7, 1.5).join(",");
 if (fibBody !== "4,8,12,20,32,52,84") throw new Error(`Fibonacci base 4: ${fibBody}`);
 const ratioBody = generatedSpacingValues("ratio", 4, 6, 1.5).join(",");
-if (ratioBody !== "4,6,10,16,24,36") throw new Error(`Ratio 1.5 base 4: ${ratioBody}`);
+if (ratioBody !== "4,6,9,14,20,30") throw new Error(`Ratio 1.5 base 4: ${ratioBody}`);
 const collapsed = generatedSpacingValues("ratio", 8, 4, 1.1).join(",");
-if (collapsed !== "8,12,16,20") throw new Error(`Un ratio que se aplasta no sigue creciendo: ${collapsed}`);
+if (collapsed !== "8,9,10,11") throw new Error(`Un ratio que se aplasta no sigue creciendo: ${collapsed}`);
 const micro = materialize({ base: 4, mode: "jumps", count: 4, ratio: 1.5, micro: true, customValues: [] });
 if (micro.steps.map((step) => step.px).join(",") !== "0,2,4,6,8,12,16") {
   throw new Error(`Micro con base 4: ${micro.steps.map((step) => step.px).join(",")}`);
@@ -152,7 +167,7 @@ if (micro.steps.map((step) => step.px).join(",") !== "0,2,4,6,8,12,16") {
 if (micro.steps[1]?.name !== "50" || !micro.steps[1]?.micro) throw new Error("El primer micro debería ser spacing/50.");
 if (!micro.steps.some((step) => step.px === 6 && step.micro)) throw new Error("6 px debería seguir marcado como micro.");
 const half = materialize({ base: 5, mode: "ratio", count: 4, ratio: 1.5, micro: true, customValues: [] });
-if (half.steps.map((step) => step.px).join(",") !== "0,2.5,5,7.5,12.5,20") {
+if (half.steps.map((step) => step.px).join(",") !== "0,2.5,5,8,11,17") {
   throw new Error(`Base impar: ${half.steps.map((step) => step.px).join(",")}`);
 }
 for (const mode of ["linear", "jumps", "ratio", "fibonacci"] as const) {
@@ -186,10 +201,10 @@ if (restored.mode !== "jumps" || restored.steps.map((step) => step.px).join(",")
 const duplicate = editSpacingValue(jumps, "200", 4);
 if (duplicate.ok) throw new Error("Un valor repetido debería rechazarse.");
 const ratioScale = materialize({ base: 4, mode: "ratio", count: 6, ratio: 1.5, micro: false, customValues: [] });
-const ratioEdit = editSpacingValue(ratioScale, "200", 9);
+const ratioEdit = editSpacingValue(ratioScale, "200", 7);
 if (!ratioEdit.ok || ratioEdit.scale.mode !== "custom") throw new Error("Editar Ratio debería pasar a Custom.");
 const ratioPx = ratioEdit.scale.steps.map((step) => step.px);
-if (ratioPx.join(",") !== "0,4,9,10,16,24,36") throw new Error(`Ratio editado: ${ratioPx.join(",")}`);
+if (ratioPx.join(",") !== "0,4,7,9,14,20,30") throw new Error(`Ratio editado: ${ratioPx.join(",")}`);
 if (restoreSpacing(ratioEdit.scale).steps.map((step) => step.px).join(",") !== ratioScale.steps.map((step) => step.px).join(",")) {
   throw new Error("Restablecer no volvió al ratio generado.");
 }
@@ -217,7 +232,7 @@ if (twoMicros.steps.map((step) => `${step.name}:${step.px}`).join(",") !== "0:0,
   throw new Error(`Dos micros: ${twoMicros.steps.map((step) => `${step.name}:${step.px}`).join(",")}`);
 }
 const dtcg = spacingDtcg(fresh);
-if (dtcg.spacing["100"]?.$type !== "dimension" || dtcg.spacing["100"]?.$value !== "4px" || dtcg.spacing["100"]?.$extensions["com.dsfoundry.rem"] !== "0.25rem") {
+if (dtcg.spacing["100"]?.$type !== "dimension" || dtcg.spacing["100"]?.$value !== "4px" || dtcg.spacing["100"]?.$extensions["com.foundry.rem"] !== "0.25rem") {
   throw new Error(`DTCG de spacing/100 inesperado: ${JSON.stringify(dtcg.spacing["100"])}`);
 }
 if (shadowCss({ y: 0, blur: 0, spread: 0, opacity: 0 }, "#000000") !== "none") {
@@ -227,15 +242,28 @@ if (!shadowCss({ y: 4, blur: 8, spread: -1, opacity: 0.1 }, "#000000").includes(
   throw new Error("La sombra no se ha escrito en CSS.");
 }
 const shadow = createShadowScale();
-if (shadow.levels.map((level) => level.name).join(",") !== "0,100,200,300,400,500") {
+if (shadow.levels.map((level) => level.name).join(",") !== "100,200,300,400,500") {
   throw new Error(`Las claves de sombra no van de cien en cien: ${shadow.levels.map((level) => level.name).join(",")}`);
+}
+if (shadow.levels.some((level) => level.y === 0 && level.blur === 0 && level.spread === 0)) {
+  throw new Error("La escala de sombra no debería incluir un nivel vacío.");
 }
 const shadowRenamed = normalizeShadow({
   ...shadow,
-  levels: shadow.levels.map((level, index) => ({ ...level, name: index === 0 ? "none" : ["sm", "md", "lg", "xl", "2xl"][index - 1] || "3xl" })),
+  levels: shadow.levels.map((level, index) => ({ ...level, name: ["sm", "md", "lg", "xl", "2xl"][index] || "3xl" })),
 });
-if (shadowRenamed.levels.map((level) => level.name).join(",") !== "0,100,200,300,400,500") {
+if (shadowRenamed.levels.map((level) => level.name).join(",") !== "100,200,300,400,500") {
   throw new Error("Un nombre semántico de sombra no ha pasado a shadow/100.");
+}
+const shadowWithNone = normalizeShadow({
+  ...shadow,
+  levels: [
+    { id: "empty", name: "0", y: 0, blur: 0, spread: 0, opacity: 0 },
+    ...shadow.levels,
+  ],
+});
+if (shadowWithNone.levels.map((level) => level.name).join(",") !== "100,200,300,400,500") {
+  throw new Error("Un shadow/0 vacío no se ha eliminado al normalizar.");
 }
 const shadowToken = exportSystem(normalizeSystem({ name: "Elev", shadow })).sets[0]?.variables.find(
   (variable) => variable.name === "shadow/100",
@@ -324,7 +352,7 @@ const remembered = normalizeProject({
 });
 const saved = remembered.systems[0];
 if (!saved?.starred) throw new Error("El favorito no se ha conservado.");
-if (saved.accent !== "slate") throw new Error("Un sistema sin color vuelve a gris.");
+if (saved.accent !== "slate") throw new Error("Un sistema sin color vuelve a transparente.");
 const colored = normalizeProject({
   version: 2,
   activeSystemId: "a",
@@ -332,7 +360,7 @@ const colored = normalizeProject({
 });
 if (colored.systems[0]?.accent !== "violet") throw new Error("El color del sistema no se ha conservado.");
 if (normalizeSystem({ name: "X", accent: "rainbow" as never }).accent !== "slate") {
-  throw new Error("Un color desconocido no vuelve a gris.");
+  throw new Error("Un color desconocido no vuelve a transparente.");
 }
 if (saved.aliases.length !== 1 || saved.aliases[0]?.name !== "bg/canvas" || saved.aliases[0]?.step !== "500") {
   throw new Error("El semantic no se ha conservado.");
@@ -356,6 +384,16 @@ if (spaceToken?.css !== "4px" || spaceToken.code !== "--spacing-100" || !spaceTo
 }
 if (!cssForExport(exported).includes("  --spacing-100: 4px;")) {
   throw new Error("El CSS no incluye --spacing-100: 4px.");
+}
+const withoutSpacing = exportSystem(project.systems[0]!, ["color", "type"]);
+if (withoutSpacing.sets[0]?.variables.some((variable) => variable.name.startsWith("spacing/") || variable.name.startsWith("border/"))) {
+  throw new Error("Un foundation desmarcado sigue en la exportación.");
+}
+if (!withoutSpacing.sets[0]?.variables.some((variable) => variable.name.startsWith("color/"))) {
+  throw new Error("Un foundation marcado no llega a la exportación.");
+}
+if ((exportSystem(project.systems[0]!, []).sets[0]?.variables.length ?? 1) !== 0) {
+  throw new Error("Sin foundations la exportación no queda vacía.");
 }
 const radiusScale = createRadiusScale();
 if (!radiusScale.full || radiusScale.mode !== "jumps" || radiusScale.base !== 4 || radiusScale.count !== 4) {
@@ -546,6 +584,39 @@ if (library.kind !== "library" || library.systems.length !== project.systems.len
 const open = library.systems.find((system) => system.active);
 if (!open || open.type.collections.length === 0) {
   throw new Error("La librería del plugin no incluye los estilos del sistema abierto.");
+}
+if (!open.definition || open.definition.colors.length !== project.systems[0]!.colors.length) {
+  throw new Error("La librería del plugin no embebe la definición editable del sistema.");
+}
+
+const source = project.systems[0]!;
+const tokenFile = exportSystem(source);
+if (!tokenFile.definition || tokenFile.definition.id !== source.id) {
+  throw new Error("tokens.json no incluye la definición editable del sistema.");
+}
+const fromTokens = systemsFromJson(tokenFile);
+if (fromTokens.length !== 1 || fromTokens[0]!.id === source.id) {
+  throw new Error("Importar tokens.json no crea un sistema nuevo.");
+}
+if (
+  fromTokens[0]!.colors.length !== source.colors.length ||
+  fromTokens[0]!.spacing.steps.length !== source.spacing.steps.length ||
+  fromTokens[0]!.name !== source.name
+) {
+  throw new Error("Importar tokens.json no recrea el design system.");
+}
+const fromLibrary = systemsFromJson(library);
+if (fromLibrary.length !== project.systems.length || fromLibrary[0]!.colors.length !== source.colors.length) {
+  throw new Error("Importar el JSON del plugin no recrea los sistemas.");
+}
+const legacyExport = { source: "creator", kind: "system", id: "x", name: "Old", sets: [{ id: "x", name: "Old", variables: [] }] };
+try {
+  systemsFromJson(legacyExport);
+  throw new Error("Un export antiguo sin definition debería rechazarse.");
+} catch (error) {
+  if (!(error instanceof Error) || !error.message.includes("editable system definition")) {
+    throw error;
+  }
 }
 
 console.log(

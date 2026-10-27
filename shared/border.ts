@@ -115,13 +115,13 @@ export function normalizeBorder(raw: Partial<BorderScale> | null | undefined): B
   return limit(spacing, count);
 }
 
-export function borderDtcg(scale: BorderScale): { border: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.dsfoundry.rem": string } }> } {
-  const border: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.dsfoundry.rem": string } }> = {};
+export function borderDtcg(scale: BorderScale): { border: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.foundry.rem": string } }> } {
+  const border: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.foundry.rem": string } }> = {};
   for (const step of scale.steps) {
     border[step.name] = {
       $type: "dimension",
       $value: `${formatSpacingPx(step.px)}px`,
-      $extensions: { "com.dsfoundry.rem": formatSpacingRem(step.px) },
+      $extensions: { "com.foundry.rem": formatSpacingRem(step.px) },
     };
   }
   return { border };

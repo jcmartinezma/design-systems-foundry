@@ -3,7 +3,7 @@ export type ExportConnection = {
   fileUrl: string;
 };
 
-const STORAGE_KEY = "dsfoundry.export-connections";
+const STORAGE_KEY = "foundry.export-connections";
 
 function empty(): ExportConnection {
   return { token: "", fileUrl: "" };
@@ -37,6 +37,14 @@ export function writeExportConnection(systemId: string, connection: ExportConnec
     fileUrl: connection.fileUrl,
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+}
+
+export function forgetAllExportConnections(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* Storage can be blocked. There is nothing to clear then. */
+  }
 }
 
 export function forgetExportConnection(systemId: string): void {

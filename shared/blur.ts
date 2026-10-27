@@ -114,13 +114,13 @@ export function normalizeBlur(raw: Partial<BlurScale> | null | undefined): BlurS
   return limit(spacing, count);
 }
 
-export function blurDtcg(scale: BlurScale): { blur: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.dsfoundry.rem": string } }> } {
-  const blur: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.dsfoundry.rem": string } }> = {};
+export function blurDtcg(scale: BlurScale): { blur: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.foundry.rem": string } }> } {
+  const blur: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.foundry.rem": string } }> = {};
   for (const step of scale.steps) {
     blur[step.name] = {
       $type: "dimension",
       $value: `${formatSpacingPx(step.px)}px`,
-      $extensions: { "com.dsfoundry.rem": formatSpacingRem(step.px) },
+      $extensions: { "com.foundry.rem": formatSpacingRem(step.px) },
     };
   }
   return { blur };

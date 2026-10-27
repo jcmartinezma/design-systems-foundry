@@ -138,13 +138,13 @@ export function radiusDimensions(scale: RadiusScale): RadiusDimension[] {
   return steps;
 }
 
-export function radiusDtcg(scale: RadiusScale): { radius: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.dsfoundry.rem": string } }> } {
-  const radius: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.dsfoundry.rem": string } }> = {};
+export function radiusDtcg(scale: RadiusScale): { radius: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.foundry.rem": string } }> } {
+  const radius: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.foundry.rem": string } }> = {};
   for (const step of radiusDimensions(scale)) {
     radius[step.name] = {
       $type: "dimension",
       $value: `${formatSpacingPx(step.px)}px`,
-      $extensions: { "com.dsfoundry.rem": formatSpacingRem(step.px) },
+      $extensions: { "com.foundry.rem": formatSpacingRem(step.px) },
     };
   }
   return { radius };

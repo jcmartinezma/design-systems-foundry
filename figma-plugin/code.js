@@ -1,6 +1,6 @@
 const PORT = 4317;
 
-figma.showUI(__html__, { width: 400, height: 680, themeColors: true });
+figma.showUI(__html__, { width: 420, height: 720, themeColors: true });
 
 figma.ui.onmessage = async (message) => {
   if (message.type === "close") {
@@ -16,7 +16,7 @@ figma.ui.onmessage = async (message) => {
       const parts = [`${result.created} new styles`, `${result.updated} updated`];
       if (result.linked) parts.push(`${result.linked} with a token`);
       if (result.removed) parts.push(`${result.removed} duplicates removed`);
-      figma.notify(`DSfoundry: ${parts.join(", ")}`);
+      figma.notify(`Foundry: ${parts.join(", ")}`);
       figma.closePlugin();
     } catch (error) {
       figma.ui.postMessage({
@@ -30,30 +30,15 @@ figma.ui.onmessage = async (message) => {
   if (message.type === "create") {
     try {
       const sets = message.file && Array.isArray(message.file.sets) ? message.file.sets : [];
-      const variableResult = await importVariableSets(sets);
-      let typeResult = null;
-      const typeCollections =
-        message.includeStyles && message.typeFile && Array.isArray(message.typeFile.collections)
-          ? message.typeFile.collections
-          : [];
-      const selectedTypes = new Set(message.collectionIds || []);
-      const collections = typeCollections.filter((item) => selectedTypes.size === 0 || selectedTypes.has(item.id));
-      if (collections.length > 0) typeResult = await importTypeStyles(collections, message.groupName);
       const variableCount = sets.reduce(
         (sum, set) => sum + (set && Array.isArray(set.variables) ? set.variables.length : 0),
         0,
       );
-      if (variableCount === 0 && !typeResult) throw new Error("Choose at least one group to create.");
-      const parts = [];
-      if (variableCount > 0) {
-        parts.push(`${variableResult.created} new variables`, `${variableResult.updated} updated`);
-        if (variableResult.skipped) parts.push(`${variableResult.skipped} skipped`);
-      }
-      if (typeResult) {
-        parts.push(`${typeResult.created} new styles`, `${typeResult.updated} styles updated`);
-        if (typeResult.linked) parts.push(`${typeResult.linked} linked to a token`);
-      }
-      figma.notify(`DSfoundry: ${parts.join(", ")}`);
+      if (variableCount === 0) throw new Error("Tick at least one foundation.");
+      const variableResult = await importVariableSets(sets);
+      const parts = [`${variableResult.created} new variables`, `${variableResult.updated} updated`];
+      if (variableResult.skipped) parts.push(`${variableResult.skipped} skipped`);
+      figma.notify(`Foundry: ${parts.join(", ")}`);
       figma.closePlugin();
     } catch (error) {
       figma.ui.postMessage({
@@ -65,7 +50,7 @@ figma.ui.onmessage = async (message) => {
   }
 
   if (message.type !== "import" || !message.file || !Array.isArray(message.file.sets)) {
-    figma.ui.postMessage({ type: "error", message: "The JSON does not come from DSfoundry." });
+    figma.ui.postMessage({ type: "error", message: "The JSON does not come from Foundry." });
     return;
   }
 
@@ -74,14 +59,14 @@ figma.ui.onmessage = async (message) => {
     const sets = message.file.sets.filter((set) => selected.size === 0 || selected.has(set.id));
     if (message.destination === "frame") {
       const count = await paintRamps(sets);
-      figma.notify(`DSfoundry: ${count} colors in a frame`);
+      figma.notify(`Foundry: ${count} colors in a frame`);
       figma.closePlugin();
       return;
     }
     const result = await importVariableSets(sets);
     const parts = [`${result.created} new`, `${result.updated} updated`];
     if (result.skipped) parts.push(`${result.skipped} skipped`);
-    figma.notify(`DSfoundry: ${parts.join(", ")}`);
+    figma.notify(`Foundry: ${parts.join(", ")}`);
     figma.closePlugin();
   } catch (error) {
     figma.ui.postMessage({
@@ -98,30 +83,31 @@ async function importVariableSets(sets) {
   const usable = (sets || []).filter((set) => set && Array.isArray(set.variables) && set.variables.length > 0);
   if (usable.length === 0) return { created, updated, skipped };
 
+  const COLLECTION_NAME = "Primitives";
   const collections = await figma.variables.getLocalVariableCollectionsAsync();
   const variables = [];
   for (const kind of ["COLOR", "FLOAT", "STRING"]) {
     variables.push(...(await figma.variables.getLocalVariablesAsync(kind)));
   }
 
+  let collection = collections.find((item) => item.name === COLLECTION_NAME);
+  let modeId;
+  if (!collection) {
+    collection = figma.variables.createVariableCollection(COLLECTION_NAME);
+    collections.push(collection);
+    modeId = collection.modes[0].modeId;
+    collection.renameMode(modeId, "Default");
+  } else {
+    modeId = collection.defaultModeId;
+  }
+
+  const byName = new Map(
+    variables
+      .filter((variable) => variable.variableCollectionId === collection.id)
+      .map((variable) => [variable.name, variable]),
+  );
+
   for (const set of usable) {
-    let collection = collections.find((item) => item.name === set.name);
-    let modeId;
-    if (!collection) {
-      collection = figma.variables.createVariableCollection(set.name);
-      collections.push(collection);
-      modeId = collection.modes[0].modeId;
-      collection.renameMode(modeId, "Default");
-    } else {
-      modeId = collection.defaultModeId;
-    }
-
-    const byName = new Map(
-      variables
-        .filter((variable) => variable.variableCollectionId === collection.id)
-        .map((variable) => [variable.name, variable]),
-    );
-
     for (const item of set.variables) {
       const kind = item.type === "FLOAT" || item.type === "STRING" ? item.type : "COLOR";
       let variable = byName.get(item.name);

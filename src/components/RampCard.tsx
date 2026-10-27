@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ArrowDown, ArrowUp, Copy, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, CircleHelp, Copy, Trash2, X } from "lucide-react";
+import { RangeInput } from "./RangeInput";
 import { cssForRamp } from "../../shared/export";
 import {
   contrastVerdict,
@@ -174,7 +175,21 @@ export function RampCard({
             checked={ramp.easeChroma}
             onChange={(event) => onChange({ ...ramp, easeChroma: event.target.checked })}
           />
-          Ease chroma at the ends
+          <span className="check-label">
+            Ease chroma
+            <button
+              type="button"
+              className="help-tip"
+              aria-label="Ease chroma lowers saturation at the light and dark ends of the ramp. Mid steps keep more of the base chroma; near-white and near-black steps stay softer."
+              data-tip="Lowers chroma at the light and dark ends of the ramp. Mid steps keep more color; near-white and near-black steps stay softer and less neon."
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+            >
+              <CircleHelp size={12} aria-hidden />
+            </button>
+          </span>
         </label>
       </div>
 
@@ -281,9 +296,8 @@ function Slider({
   return (
     <label className="field">
       <span>{label}</span>
-      <input
+      <RangeInput
         className={className}
-        type="range"
         min={min}
         max={max}
         step={step}

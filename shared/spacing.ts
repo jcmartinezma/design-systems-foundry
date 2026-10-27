@@ -191,7 +191,7 @@ export function restoreSpacing(scale: SpacingScale): SpacingScale {
 export type SpacingDtcgToken = {
   $type: "dimension";
   $value: string;
-  $extensions: { "com.dsfoundry.rem": string };
+  $extensions: { "com.foundry.rem": string };
 };
 
 export function spacingDtcg(scale: SpacingScale): { spacing: Record<string, SpacingDtcgToken> } {
@@ -200,7 +200,7 @@ export function spacingDtcg(scale: SpacingScale): { spacing: Record<string, Spac
     spacing[step.name] = {
       $type: "dimension",
       $value: `${formatSpacingPx(step.px)}px`,
-      $extensions: { "com.dsfoundry.rem": formatSpacingRem(step.px) },
+      $extensions: { "com.foundry.rem": formatSpacingRem(step.px) },
     };
   }
   return { spacing };
@@ -252,15 +252,19 @@ function generatedBody(mode: Exclude<SpacingMode, "custom">, base: number, count
 }
 
 function ratioValues(base: number, count: number, ratio: number): number[] {
-  const quantum = roundPx(base / 2);
+  // Geometric: base × ratio^i. Snap to whole px when the base is an integer so even
+  // bases stay on the pixel grid; otherwise keep half-pixels. If two steps would
+  // collide after rounding, bump by 1 px (or 0.5) so the scale still grows — but do
+  // not snap every step to base/2, or small ratios (1.01–1.333 with base 4) all look
+  // identical (4, 6, 8, 10…).
+  const unit = Number.isInteger(roundPx(base)) ? 1 : 0.5;
   const values: number[] = [];
-  let current = base;
   for (let index = 0; index < count; index += 1) {
-    let next = index === 0 ? roundPx(base) : roundToQuantum(current * ratio, quantum);
+    const raw = base * ratio ** index;
+    let next = unit === 1 ? Math.round(raw) : roundPx(raw);
     const previous = values[values.length - 1];
-    if (previous !== undefined && next <= previous) next = roundPx(previous + quantum);
+    if (previous !== undefined && next <= previous) next = roundPx(previous + unit);
     values.push(next);
-    current = next;
   }
   return values;
 }
@@ -362,11 +366,6 @@ function isMultiple(value: number, quantum: number): boolean {
   if (!(quantum > 0)) return true;
   const units = value / quantum;
   return Math.abs(units - Math.round(units)) < 1e-6;
-}
-
-function roundToQuantum(value: number, quantum: number): number {
-  const units = Math.max(1, Math.round(value / quantum));
-  return roundPx(units * quantum);
 }
 
 function roundPx(value: number): number {

@@ -3,103 +3,179 @@
   <head>
     <meta charset="UTF-8" />
     <style>
+      /*
+        Figma plugin UI is a standalone HTML string (no node_modules).
+        Values match @jcmartinezma/jcbrand dark theme semantics from tokens.md.
+      */
       :root {
         color-scheme: dark;
-        --bg: #141414;
-        --line: rgba(255, 255, 255, 0.08);
-        --line-strong: rgba(255, 255, 255, 0.14);
-        --text: #ececec;
-        --muted: #8d8d8d;
-        --faint: #6f6f6f;
-        --danger: #f0a8a8;
-        --focus: #8ab4ff;
+        --color-bg-primary: #141414;
+        --color-bg-secondary: #242424;
+        --color-surface-tertiary: #242424;
+        --color-surface-tertiary-inverse: #efefef;
+        --color-text-primary: #efefef;
+        --color-text-secondary: #8a8a8a;
+        --color-text-tertiary: #636363;
+        --color-text-danger: #cb5c5c;
+        --color-text-secondary-inverse: #141414;
+        --color-border-secondary: #4a4a4a;
+        --color-border-tertiary: #242424;
+        --color-border-accent: #7d9420;
+        --text-style-base: "Rethink Sans", ui-sans-serif, system-ui, sans-serif;
+        --text-style-display: "Rethink Sans", ui-sans-serif, system-ui, sans-serif;
+        --text-size-xxs: 12px;
+        --text-size-xs: 14px;
+        --text-size-sm: 16px;
+        --text-weight-normal: 400;
+        --text-weight-semibold: 600;
+        --text-weight-bold: 700;
+        --text-line-height-sm: 18px;
+        --text-line-height-md: 21px;
+        --text-letter-spacing-normal: 0px;
+        --spacing-2xs: 4px;
+        --spacing-xs: 8px;
+        --spacing-sm: 16px;
+        --spacing-md: 24px;
+        --border-radius-xs: 4px;
+        --border-radius-200: 8px;
+        --motion-duration-fast: 0.1s;
+        --motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
       }
       * { box-sizing: border-box; }
       html, body { height: 100%; }
       body {
         margin: 0;
-        font: 13px/1.4 ui-sans-serif, system-ui, sans-serif;
-        background: var(--bg);
-        color: var(--text);
+        font-family: var(--text-style-base);
+        font-size: var(--text-size-xxs);
+        font-weight: var(--text-weight-normal);
+        line-height: var(--text-line-height-sm);
+        letter-spacing: var(--text-letter-spacing-normal);
+        background: var(--color-bg-primary);
+        color: var(--color-text-primary);
       }
       main {
         height: 100%;
-        padding: 12px;
+        padding: var(--spacing-md);
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: var(--spacing-sm);
         overflow: auto;
       }
-      h1 { margin: 0; font-size: 14px; font-weight: 600; }
-      p { margin: 0; color: var(--muted); }
+      .brand {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-xs);
+        padding-bottom: var(--spacing-2xs);
+      }
+      .brand-mark {
+        width: 28px;
+        height: 28px;
+        border-radius: var(--border-radius-xs);
+        background: var(--color-surface-tertiary-inverse);
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+      }
+      .brand-mark svg { display: block; width: 12px; height: 16px; }
+      .brand-name {
+        margin: 0;
+        font-family: var(--text-style-display);
+        font-size: var(--text-size-sm);
+        font-weight: var(--text-weight-bold);
+        line-height: var(--text-line-height-md);
+        letter-spacing: var(--text-letter-spacing-normal);
+      }
+      .step-meta {
+        margin: 0;
+        color: var(--color-text-tertiary);
+        font-size: var(--text-size-xxs);
+        line-height: var(--text-line-height-sm);
+      }
+      h1 {
+        margin: 0;
+        font-family: var(--text-style-display);
+        font-size: var(--text-size-xs);
+        font-weight: var(--text-weight-semibold);
+        line-height: var(--text-line-height-sm);
+        letter-spacing: var(--text-letter-spacing-normal);
+      }
+      p { margin: 0; color: var(--color-text-secondary); }
       button, textarea, input[type="text"], input[type="search"] {
         font: inherit;
         color: inherit;
         background: transparent;
-        border: 1px solid var(--line-strong);
-        border-radius: 6px;
+        border: 1px solid var(--color-border-secondary);
+        border-radius: var(--border-radius-xs);
       }
-      button { height: 28px; padding: 0 10px; cursor: pointer; }
-      button.primary { background: #ececec; color: #161616; border-color: #ececec; }
+      button {
+        height: 32px;
+        padding: 0 var(--spacing-xs);
+        cursor: pointer;
+        transition: background var(--motion-duration-fast) var(--motion-easing-standard),
+          border-color var(--motion-duration-fast) var(--motion-easing-standard),
+          color var(--motion-duration-fast) var(--motion-easing-standard),
+          opacity var(--motion-duration-fast) var(--motion-easing-standard);
+      }
+      button.primary {
+        background: var(--color-surface-tertiary-inverse);
+        color: var(--color-text-secondary-inverse);
+        border-color: var(--color-surface-tertiary-inverse);
+        font-weight: var(--text-weight-semibold);
+      }
+      button.primary:disabled {
+        background: var(--color-bg-secondary);
+        color: var(--color-text-tertiary);
+        border-color: var(--color-border-tertiary);
+        opacity: 1;
+      }
       button:disabled { opacity: 0.55; cursor: default; }
       button:focus-visible, textarea:focus-visible, input:focus-visible {
-        outline: 2px solid var(--focus);
+        outline: 2px solid var(--color-border-accent);
         outline-offset: 1px;
       }
       textarea {
-        min-height: 88px;
-        padding: 8px;
+        min-height: 96px;
+        padding: var(--spacing-xs);
         resize: vertical;
-        background: #1a1a1a;
+        background: var(--color-bg-secondary);
+        border-color: var(--color-border-secondary);
       }
       input[type="text"], input[type="search"] {
-        height: 28px;
+        height: 32px;
         width: 100%;
-        padding: 0 8px;
-        background: #1a1a1a;
+        padding: 0 var(--spacing-xs);
+        background: var(--color-bg-secondary);
       }
-      .field {
+      .divider {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        color: var(--color-text-tertiary);
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .divider::before, .divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--color-border-secondary);
+      }
+      .json-box { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+      .panel > button.primary, .json-box > button.primary { width: 100%; }
+      .panel {
+        display: none;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        flex: 1;
+      }
+      .panel.active { display: flex; }
+      .panel-head {
         display: flex;
         flex-direction: column;
-        align-items: stretch;
-        gap: 4px;
+        gap: var(--spacing-2xs);
       }
-      .field span { color: var(--muted); font-size: 12px; }
-      .field small, .choice small, .check small { color: var(--faint); font-size: 11px; }
-      .steps {
-        display: flex;
-        gap: 2px;
-        margin: 0;
-        padding: 2px;
-        list-style: none;
-        border-radius: 7px;
-        background: #121212;
-        border: 1px solid var(--line);
-      }
-      .steps button {
-        flex: 1;
-        border: 0;
-        background: transparent;
-        color: var(--faint);
-        border-radius: 5px;
-      }
-      .steps button.done { color: var(--text); }
-      .steps button.current { background: #2c2c2c; color: white; }
-      .steps button:disabled { opacity: 1; }
-      .choice { display: flex; flex-direction: column; gap: 4px; }
-      .choice label { align-items: flex-start; border: 1px solid var(--line); }
-      .choice label:has(input:checked), .list label:has(input:checked) {
-        border-color: var(--line-strong);
-        background: rgba(255, 255, 255, 0.05);
-      }
-      .choice small, .check small { display: block; }
-      .check { align-items: flex-start; }
-      .json-box { display: flex; flex-direction: column; gap: 8px; }
-      .json-box[hidden], [hidden] { display: none !important; }
-      .panel > button.primary, .json-box > button.primary { width: 100%; }
-      .panel { display: none; flex-direction: column; gap: 10px; }
-      .panel.active { display: flex; }
-      .row { display: flex; gap: 8px; flex-wrap: wrap; }
       .list {
         display: flex;
         flex-direction: column;
@@ -109,97 +185,108 @@
       }
       label {
         display: flex;
-        gap: 8px;
+        gap: var(--spacing-xs);
         align-items: center;
-        padding: 6px 8px;
-        border-radius: 6px;
+        padding: 6px var(--spacing-xs);
+        border-radius: var(--border-radius-xs);
       }
-      label:hover { background: rgba(255, 255, 255, 0.05); }
-      label strong { font-weight: 550; }
-      label em { color: var(--faint); font-style: normal; font-size: 11px; margin-left: auto; white-space: nowrap; }
-      label small { display: block; color: var(--faint); font-size: 11px; }
-      .choice label span, .list label span { display: flex; flex-direction: column; min-width: 0; }
-      .error { color: var(--danger); }
+      label:hover { background: var(--color-bg-secondary); }
+      label strong { font-weight: var(--text-weight-semibold); }
+      label em {
+        color: var(--color-text-tertiary);
+        font-style: normal;
+        font-size: 11px;
+        margin-left: auto;
+        white-space: nowrap;
+      }
+      label small { display: block; color: var(--color-text-tertiary); font-size: 11px; }
+      .list label span { display: flex; flex-direction: column; min-width: 0; }
+      .list label:has(input:checked) {
+        background: var(--color-bg-secondary);
+        outline: 1px solid var(--color-border-secondary);
+      }
+      .error { color: var(--color-text-danger); min-height: var(--text-line-height-sm); }
+      .field-error { color: var(--color-text-danger); font-size: 11px; min-height: 14px; }
       .back {
         align-self: flex-start;
-        height: 24px;
-        padding: 0 8px;
+        height: 28px;
+        padding: 0 var(--spacing-xs);
         border-color: transparent;
-        color: var(--muted);
+        color: var(--color-text-secondary);
       }
+      .back:hover { color: var(--color-text-primary); }
+      .groups-label {
+        color: var(--color-text-primary);
+        font-weight: var(--text-weight-semibold);
+      }
+      .grow { flex: 1; }
     </style>
   </head>
   <body>
     <main>
-      <nav class="steps" aria-label="Steps">
-        <button id="goto-1" type="button" class="current">1 Read</button>
-        <button id="goto-2" type="button" disabled>2 System</button>
-        <button id="goto-3" type="button" disabled>3 Create</button>
-      </nav>
+      <header class="brand" aria-label="Foundry">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="12" height="16" viewBox="0 0 12 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3.38355 11.3333C3.695 11.3333 3.94748 11.6318 3.94748 12V15.3333C3.94748 15.7015 3.695 16 3.38355 16H0.563926C0.252478 16 0 15.7015 0 15.3333V12C0 11.6318 0.252478 11.3333 0.563926 11.3333H3.38355Z" fill="black"/>
+            <path d="M7.54636 6C7.75995 6 7.95528 6.14265 8.05081 6.36849L9.17866 9.03516C9.36614 9.47842 9.09342 10 8.67421 10H0.563926C0.252478 10 0 9.70152 0 9.33333V6.66667C3.63315e-08 6.29848 0.252478 6 0.563926 6H7.54636Z" fill="black"/>
+            <path d="M9.82574 0C10.0281 8.58332e-05 10.215 0.128236 10.3153 0.335938L11.925 3.66927C12.1397 4.11371 11.8678 4.66667 11.4349 4.66667H0.563926C0.252478 4.66667 0 4.36819 0 4V0.666667C0 0.298477 0.252478 0 0.563926 0H9.82574Z" fill="black"/>
+          </svg>
+        </span>
+        <p class="brand-name">Foundry</p>
+      </header>
 
       <section id="step-read" class="panel active">
-        <h1>Read from DSfoundry</h1>
-        <p>Nothing can be created until a library is loaded. Read the systems on this computer, or paste a JSON export.</p>
-        <button class="primary" id="load" type="button">Read from DSfoundry</button>
+        <div class="panel-head">
+          <p class="step-meta" id="step-read-meta">Step 1 of 3</p>
+          <h1>Data</h1>
+          <p>Read the Design Systems on this computer, or paste a JSON export.</p>
+        </div>
+        <button class="primary" id="load" type="button">Read from Foundry</button>
         <p id="loaded-note" hidden></p>
         <button id="resume" type="button" hidden>Continue</button>
-        <label class="check">
-          <input id="use-json" type="checkbox" />
-          <span>Paste JSON<small>Use this only if Figma cannot read localhost. Copy JSON in DSfoundry includes the variables. An older file that only has sets still loads.</small></span>
-        </label>
-        <div id="json-box" class="json-box" hidden>
-          <textarea id="json" placeholder='{"source":"creator","kind":"library","systems":[...]}'></textarea>
-          <button class="primary" id="paste-continue" type="button">Use this JSON</button>
+        <div class="divider" aria-hidden="true">OR</div>
+        <div class="json-box">
+          <textarea id="json" placeholder='{"source":"creator","kind":"library","systems":[...]}' spellcheck="false"></textarea>
+          <p class="field-error" id="json-error" aria-live="polite"></p>
+          <button class="primary" id="paste-continue" type="button" disabled>Import JSON</button>
         </div>
       </section>
 
       <section id="step-system" class="panel">
-        <button class="back" id="back-system" type="button">Back</button>
-        <h1>Choose a design system</h1>
-        <p>One system goes to Figma. Search by name when the list is long.</p>
+        <button class="back" id="back-system" type="button">← Back</button>
+        <div class="panel-head">
+          <p class="step-meta">Step 2 of 3</p>
+          <h1>System</h1>
+          <p>One system goes to Figma. Search by name when the list is long.</p>
+        </div>
         <input id="search" type="search" placeholder="Search by name" aria-label="Search design systems by name" />
         <p id="selected-line"></p>
         <p id="systems-empty" hidden>No system matches that name.</p>
-        <div id="systems" class="list" role="radiogroup" aria-label="Design systems"></div>
+        <div id="systems" class="list grow" role="radiogroup" aria-label="Design systems"></div>
         <button class="primary" id="to-create" type="button" disabled>Continue</button>
       </section>
 
       <section id="step-create" class="panel">
-        <button class="back" id="back-create" type="button">Back</button>
-        <h1 id="create-title">Bring into Figma</h1>
-        <p>Choose what to create, then tick the groups to include.</p>
-        <div class="choice" role="radiogroup" aria-label="What to bring into Figma">
-          <label>
-            <input type="radio" name="scope" value="variables" checked />
-            <span>Variables<small>Creates or updates the variables in this file.</small></span>
-          </label>
-          <label>
-            <input type="radio" name="scope" value="both" />
-            <span>Variables and text styles<small>Variables first, then text styles linked to the type sizes.</small></span>
-          </label>
+        <button class="back" id="back-create" type="button">← Back</button>
+        <div class="panel-head">
+          <p class="step-meta">Step 3 of 3</p>
+          <h1 id="create-title">Variables</h1>
+          <p>Select the tokens you want to import to Figma.</p>
         </div>
-        <div id="groups" class="list"></div>
-        <div class="field" id="style-folder" hidden>
-          <span>Style folder</span>
-          <input id="type-group" type="text" value="Text" spellcheck="false" />
-          <small>Folder in Figma. A size named base becomes Text/base.</small>
-        </div>
+        <p class="groups-label" id="groups-label">Foundations</p>
+        <div id="groups" class="list grow" role="group" aria-labelledby="groups-label"></div>
         <p id="create-hint"></p>
-        <button class="primary" id="create" type="button" disabled>Create</button>
+        <button class="primary" id="create" type="button" disabled>Create variables</button>
       </section>
-
-      <div class="row">
-        <button id="close" type="button">Close</button>
-      </div>
       <p class="error" id="error"></p>
     </main>
     <script>
       const PORT = 4317;
       const GROUPS = [
         ["color", "Color", "Color ramps"],
-        ["type", "Font", "Family, size, height, and weight"],
+        ["type", "Typography", "Family, size, height, and weight"],
         ["border", "Border", "Stroke widths"],
-        ["space", "Spacing", "Space scale"],
+        ["spacing", "Spacing", "Space scale"],
         ["radius", "Radius", "Corner scale"],
         ["shadow", "Shadow", "Shadow levels"],
         ["motion", "Motion", "Durations and easings"],
@@ -208,12 +295,13 @@
       ];
 
       const errorNode = document.getElementById("error");
+      const jsonError = document.getElementById("json-error");
+      const pasteButton = document.getElementById("paste-continue");
       let step = 1;
       let library = [];
       let selectedId = "";
       let checksFor = "";
       let checks = {};
-      let groupTouched = false;
 
       function showError(message) {
         errorNode.textContent = message || "";
@@ -223,7 +311,7 @@
         const name = String(variable && variable.name || "");
         if (name.startsWith("color/")) return "color";
         if (name.startsWith("border/")) return "border";
-        if (name.startsWith("spacing/") || name.startsWith("space/")) return "space";
+        if (name.startsWith("spacing/") || name.startsWith("space/")) return "spacing";
         if (name.startsWith("radius/")) return "radius";
         if (name.startsWith("shadow/")) return "shadow";
         if (name.startsWith("motion/")) return "motion";
@@ -236,29 +324,8 @@
         return (system.sets || []).flatMap((set) => (Array.isArray(set.variables) ? set.variables : []));
       }
 
-      function styleCollections(system) {
-        const type = system && system.type;
-        return type && Array.isArray(type.collections) ? type.collections : [];
-      }
-
-      function styleCount(system) {
-        return styleCollections(system).reduce(
-          (sum, collection) => sum + (Array.isArray(collection.styles) ? collection.styles.length : 0),
-          0,
-        );
-      }
-
       function selectedSystem() {
         return library.find((item) => item.id === selectedId) || null;
-      }
-
-      function scope() {
-        const checked = document.querySelector('input[name="scope"]:checked');
-        return checked && checked.value === "both" ? "both" : "variables";
-      }
-
-      function stylesWanted(system) {
-        return scope() === "both" && checks.styles === true && styleCount(system) > 0;
       }
 
       function showStep(next) {
@@ -266,13 +333,6 @@
         document.getElementById("step-read").classList.toggle("active", next === 1);
         document.getElementById("step-system").classList.toggle("active", next === 2);
         document.getElementById("step-create").classList.toggle("active", next === 3);
-        for (let index = 1; index <= 3; index += 1) {
-          const button = document.getElementById(`goto-${index}`);
-          const open = index === 1 || (index === 2 && library.length > 0) || (index === 3 && Boolean(selectedSystem()));
-          button.disabled = !open;
-          button.classList.toggle("current", index === next);
-          button.classList.toggle("done", open && index !== next);
-        }
         showError("");
         if (next === 1) renderRead();
         if (next === 2) renderSystems();
@@ -291,7 +351,8 @@
           : `${library.length} systems are already loaded.`;
       }
 
-      function adoptLibrary(systems) {
+      function adoptLibrary(systems, options) {
+        const skipSystemPick = Boolean(options && options.skipSystemPick);
         library = systems.map((system, index) => ({
           ...system,
           id: typeof system.id === "string" && system.id ? system.id : `system-${index}`,
@@ -301,9 +362,10 @@
           selectedId = active ? active.id : "";
         }
         checksFor = "";
-        groupTouched = false;
         document.getElementById("search").value = "";
-        showStep(2);
+        // Paste JSON already chose the export; go straight to foundations.
+        // Read from Foundry can return several systems, so keep the picker.
+        showStep(skipSystemPick ? 3 : 2);
       }
 
       function systemsFromParsed(parsed) {
@@ -333,6 +395,22 @@
         return null;
       }
 
+      function validateJsonField() {
+        const raw = document.getElementById("json").value.trim();
+        jsonError.textContent = "";
+        if (!raw) {
+          pasteButton.disabled = true;
+          return;
+        }
+        try {
+          JSON.parse(raw);
+          pasteButton.disabled = false;
+        } catch {
+          pasteButton.disabled = true;
+          jsonError.textContent = "That text is not valid JSON.";
+        }
+      }
+
       function visibleSystems() {
         const query = document.getElementById("search").value.trim().toLowerCase();
         if (!query) return library;
@@ -355,7 +433,6 @@
             if (selectedId !== system.id) {
               selectedId = system.id;
               checksFor = "";
-              groupTouched = false;
             }
             updateSystemActions();
           };
@@ -365,9 +442,7 @@
           text.appendChild(name);
           const meta = document.createElement("em");
           const variables = allVariables(system).length;
-          const styles = styleCount(system);
           const bits = [`${variables} variables`];
-          if (styles) bits.push(`${styles} styles`);
           if (system.active) bits.push("open");
           meta.textContent = bits.join(" · ");
           label.append(input, text, meta);
@@ -380,24 +455,15 @@
         const system = selectedSystem();
         document.getElementById("to-create").disabled = !system;
         document.getElementById("selected-line").textContent = system ? `Selected: ${system.name}` : "Select one system.";
-        const createTab = document.getElementById("goto-3");
-        if (step === 2) {
-          createTab.disabled = !system;
-          createTab.classList.toggle("done", Boolean(system));
-        }
       }
 
       function bindSystem(system) {
         if (!system || checksFor === system.id) return;
         checksFor = system.id;
-        checks = { styles: true };
+        checks = {};
         allVariables(system).forEach((variable) => {
           checks[groupId(variable)] = true;
         });
-        if (!groupTouched) {
-          const first = styleCollections(system)[0];
-          document.getElementById("type-group").value = first && first.name ? first.name : "Text";
-        }
       }
 
       function addCheck(parent, id, title, detail, countLabel) {
@@ -425,11 +491,9 @@
         const system = selectedSystem();
         const groups = document.getElementById("groups");
         const hint = document.getElementById("create-hint");
-        const folder = document.getElementById("style-folder");
         groups.innerHTML = "";
         if (!system) {
           hint.textContent = "Choose a design system first.";
-          folder.hidden = true;
           document.getElementById("create").disabled = true;
           return;
         }
@@ -445,37 +509,17 @@
           if (!count) return;
           addCheck(groups, id, title, detail, String(count));
         });
-        const styles = styleCount(system);
-        if (scope() === "both" && styles > 0) {
-          addCheck(groups, "styles", "Text styles", "Linked to type sizes when those sizes are included.", String(styles));
-        }
-        const includeStyles = stylesWanted(system);
-        folder.hidden = !includeStyles;
         const chosen = allVariables(system).filter((variable) => checks[groupId(variable)] === true).length;
-        if (allVariables(system).length === 0 && styles === 0) {
-          hint.textContent = "This system has nothing to create.";
-        } else if (scope() === "both" && styles === 0) {
-          hint.textContent = "This system has no text styles. Font primitives are variables in the Font group. Choose Variables.";
-        } else if (scope() === "variables" && allVariables(system).length === 0 && styles > 0) {
-          hint.textContent = "This system has no variables. Choose Variables and text styles to create its text styles.";
-        } else if (chosen === 0 && !includeStyles) {
-          hint.textContent = "Tick at least one group.";
+        if (allVariables(system).length === 0) {
+          hint.textContent = "This system has no variables to create.";
+        } else if (chosen === 0) {
+          hint.textContent = "Tick at least one foundation.";
         } else {
-          const parts = [];
-          if (chosen) parts.push(`${chosen} ${chosen === 1 ? "variable" : "variables"}`);
-          if (includeStyles) parts.push(`${styles} ${styles === 1 ? "text style" : "text styles"}`);
-          hint.textContent = `Create will add ${parts.join(" and ")}.`;
+          hint.textContent = `Create will write ${chosen} ${chosen === 1 ? "variable" : "variables"} into Primitives.`;
         }
-        document.getElementById("create").disabled = chosen === 0 && !includeStyles;
+        document.getElementById("create").disabled = chosen === 0;
       }
 
-      document.getElementById("goto-1").onclick = () => showStep(1);
-      document.getElementById("goto-2").onclick = () => {
-        if (library.length) showStep(2);
-      };
-      document.getElementById("goto-3").onclick = () => {
-        if (selectedSystem()) showStep(3);
-      };
       document.getElementById("back-system").onclick = () => showStep(1);
       document.getElementById("back-create").onclick = () => showStep(2);
       document.getElementById("resume").onclick = () => showStep(2);
@@ -488,20 +532,10 @@
         showStep(3);
       };
 
-      document.querySelectorAll('input[name="scope"]').forEach((input) => {
-        input.onchange = () => renderCreate();
-      });
-
-      document.getElementById("type-group").oninput = () => {
-        groupTouched = true;
-      };
-
-      document.getElementById("use-json").onchange = () => {
-        document.getElementById("json-box").hidden = !document.getElementById("use-json").checked;
+      document.getElementById("json").oninput = () => {
         showError("");
+        validateJsonField();
       };
-
-      document.getElementById("json").oninput = () => showError("");
 
       document.getElementById("load").onclick = async () => {
         const button = document.getElementById("load");
@@ -511,36 +545,37 @@
         try {
           const response = await fetch(`http://localhost:${PORT}/api/plugin`);
           const body = await response.json().catch(() => null);
-          if (!response.ok || !body) throw new Error((body && body.error) || "DSfoundry did not respond.");
+          if (!response.ok || !body) throw new Error((body && body.error) || "Foundry did not respond.");
           const systems = systemsFromParsed(body);
-          if (!systems) throw new Error("DSfoundry did not return any design systems.");
-          document.getElementById("use-json").checked = false;
-          document.getElementById("json-box").hidden = true;
+          if (!systems) throw new Error("Foundry did not return any design systems.");
           adoptLibrary(systems);
         } catch {
-          showError("Cannot reach DSfoundry. Open it with npm run dev, or paste JSON.");
+          showError("Cannot reach Foundry. Open it with npm run dev, or paste JSON.");
         } finally {
           button.disabled = false;
-          button.textContent = "Read from DSfoundry";
+          button.textContent = "Read from Foundry";
         }
       };
 
-      document.getElementById("paste-continue").onclick = () => {
+      pasteButton.onclick = () => {
         showError("");
         const raw = document.getElementById("json").value.trim();
         if (!raw) {
-          showError("Paste the JSON copied in DSfoundry.");
+          jsonError.textContent = "Paste the JSON copied in Foundry.";
+          pasteButton.disabled = true;
           return;
         }
         try {
           const systems = systemsFromParsed(JSON.parse(raw));
           if (!systems) {
-            showError("That text is not DSfoundry JSON.");
+            jsonError.textContent = "That JSON is valid, but it is not Foundry export data.";
             return;
           }
-          adoptLibrary(systems);
+          jsonError.textContent = "";
+          adoptLibrary(systems, { skipSystemPick: true });
         } catch {
-          showError("That text is not DSfoundry JSON.");
+          jsonError.textContent = "That text is not valid JSON.";
+          pasteButton.disabled = true;
         }
       };
 
@@ -552,29 +587,19 @@
           return;
         }
         const variables = allVariables(system).filter((variable) => checks[groupId(variable)] === true);
-        const includeStyles = stylesWanted(system);
-        if (variables.length === 0 && !includeStyles) {
-          showError("Choose at least one group.");
+        if (variables.length === 0) {
+          showError("Tick at least one foundation.");
           return;
         }
-        const collections = includeStyles ? styleCollections(system) : [];
         parent.postMessage({
           pluginMessage: {
             type: "create",
             file: {
               source: "creator",
-              sets: [{ id: system.id, name: system.name, variables }],
+              sets: [{ id: system.id, name: "Primitives", variables }],
             },
-            includeStyles,
-            typeFile: includeStyles ? system.type : null,
-            collectionIds: collections.map((collection) => collection.id),
-            groupName: document.getElementById("type-group").value,
           },
         }, "*");
-      };
-
-      document.getElementById("close").onclick = () => {
-        parent.postMessage({ pluginMessage: { type: "close" } }, "*");
       };
 
       onmessage = (event) => {
@@ -582,6 +607,7 @@
         if (message && message.type === "error") showError(message.message);
       };
 
+      validateJsonField();
       showStep(1);
     </script>
   </body>

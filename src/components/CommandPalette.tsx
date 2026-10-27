@@ -27,7 +27,7 @@ export function CommandPalette(props: Props) {
         hint: "This system",
         run: () => props.onOpenSection(item.id),
       })),
-      { id: "section-tokens", label: "Tokens", hint: "This system", run: () => props.onOpenSection("tokens") },
+      { id: "section-tokens", label: "Tokens Review", hint: "This system", run: () => props.onOpenSection("tokens") },
       { id: "section-export", label: "Export", hint: "This system", run: () => props.onOpenSection("export") },
       ...props.systems.map((system) => ({
         id: `system-${system.id}`,

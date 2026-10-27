@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { accentMark } from "../../shared/accents";
 import { generateStops } from "../../shared/color";
 import type { DesignSystem, SystemAccent, SystemStatus } from "../../shared/types";
-import { FOUNDATION_TOTAL, formatAgo, foundationsDone, statusLabel } from "../sections";
-import { ImportJson } from "./NewSystemMenu";
+import { formatAgo, statusLabel } from "../sections";
 import { AccentPicker } from "./AccentPicker";
-import { ChevronDown, MoreHorizontal, Plus, Star } from "lucide-react";
+import { ConfirmModal } from "./ConfirmModal";
+import { FileJson, Layers, MoreHorizontal, Plus, Star, Trash2 } from "lucide-react";
+import { enablePublish } from "../features";
 import { ThemeToggle } from "./ThemeToggle";
 
 type StatusFilter = "all" | SystemStatus;
@@ -32,6 +34,7 @@ type Props = {
   canDelete: boolean;
   onBlank: () => void;
   onImport: (file: File) => void;
+  onReset: () => void;
 };
 
 export function LibraryPage(props: Props) {
@@ -61,14 +64,20 @@ export function LibraryPage(props: Props) {
 
   return (
     <div className="library-page">
-      <header className="library-head">
-        <div>
-          <h1>All systems</h1>
-          <p className="lede">Each card is one product’s foundations. Open it to edit. Star it to pin it on the rail.</p>
-        </div>
+      <header className="library-head" style={props.systems.length === 0 ? { justifyContent: "flex-end" } : undefined}>
+        {props.systems.length > 0 ? (
+          <div>
+            <h1>All systems</h1>
+            <p className="lede">These are your design system foundations.</p>
+          </div>
+        ) : null}
         <ThemeToggle value={props.theme} onChange={props.onTheme} />
       </header>
 
+      {props.systems.length === 0 ? (
+        <EmptyLibrary onBlank={props.onBlank} onImport={props.onImport} />
+      ) : (
+        <>
       <div className="library-tools">
         <label className="library-search">
           <input
@@ -123,96 +132,105 @@ export function LibraryPage(props: Props) {
         ))}
         <NewSystemCard onBlank={props.onBlank} onImport={props.onImport} />
       </div>
+
+      <ResetApp onReset={props.onReset} />
+        </>
+      )}
     </div>
   );
 }
 
-function NewSystemCard({ onBlank, onImport }: { onBlank: () => void; onImport: (file: File) => void }) {
-  const [open, setOpen] = useState(false);
-  const [box, setBox] = useState<{ top: number; left: number; width: number } | null>(null);
-  const cardRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+function NewSystemActions({ onBlank, onImport }: { onBlank: () => void; onImport: (file: File) => void }) {
+  return (
+    <div className="onboard-actions">
+      <button type="button" className="primary" onClick={onBlank}>
+        <Plus size={14} />
+        Start from scratch
+      </button>
+      {enablePublish ? (
+        <label className="onboard-secondary">
+          <FileJson size={14} />
+          Import JSON
+          <input
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) onImport(file);
+            }}
+          />
+        </label>
+      ) : null}
+    </div>
+  );
+}
 
-  function place() {
-    const rect = cardRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const width = rect.width;
-    const height = 92;
-    const gap = 10;
-    let top = rect.bottom + gap;
-    if (top + height > window.innerHeight - 12) top = Math.max(12, rect.top - gap - height);
-    let left = rect.left;
-    if (left + width > window.innerWidth - 12) left = Math.max(12, window.innerWidth - 12 - width);
-    setBox({ top, left, width });
-  }
+function EmptyLibrary({ onBlank, onImport }: { onBlank: () => void; onImport: (file: File) => void }) {
+  return (
+    <section className="library-onboard" aria-labelledby="library-onboard-title">
+      <div className="onboard-panel">
+        <span className="onboard-mark" aria-hidden="true">
+          <Layers size={20} />
+        </span>
+        <h2 id="library-onboard-title">No design systems yet</h2>
+        <p>
+          {enablePublish
+            ? "Create your first system to define colors, type, spacing and more. Or import one you already have."
+            : "Create your first system to define colors, type, spacing and more."}
+        </p>
+        <NewSystemActions onBlank={onBlank} onImport={onImport} />
+      </div>
+    </section>
+  );
+}
 
-  useEffect(() => {
-    if (!open) return;
-    function onPointer(event: MouseEvent) {
-      const target = event.target as Node;
-      if (cardRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      setOpen(false);
-    }
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onPointer);
-    document.addEventListener("keydown", onKey);
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
-    return () => {
-      document.removeEventListener("mousedown", onPointer);
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
-    };
-  }, [open]);
+function ResetApp({ onReset }: { onReset: () => void }) {
+  const [confirming, setConfirming] = useState(false);
 
   return (
-    <article className={open ? "sys-card sys-new open" : "sys-card sys-new"}>
-      <button
-        ref={cardRef}
-        type="button"
-        className="sys-new-trigger"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => {
-          if (!open) place();
-          setOpen((value) => !value);
-        }}
-      >
+    <footer className="library-foot">
+      <button type="button" className="danger-btn" onClick={() => setConfirming(true)}>
+        <Trash2 size={14} />
+        Delete all data and reset
+      </button>
+      {confirming ? (
+        <ConfirmModal
+          title="Delete all data?"
+          description="This deletes every design system and your saved settings. It cannot be undone."
+          confirmLabel="Yes, delete everything"
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => {
+            setConfirming(false);
+            onReset();
+          }}
+        />
+      ) : null}
+    </footer>
+  );
+}
+
+function NewSystemCard({ onBlank, onImport }: { onBlank: () => void; onImport: (file: File) => void }) {
+  if (!enablePublish) {
+    return (
+      <button type="button" className="sys-card sys-new sys-new-button" onClick={onBlank}>
         <span className="sys-new-mark" aria-hidden="true">
           <Plus size={16} />
         </span>
-        <span className="sys-new-title">
-          <strong>New system</strong>
-          <ChevronDown size={14} />
-        </span>
-        <p>Start from nothing, or bring in a JSON file.</p>
+        <strong>New system</strong>
+        <p>Start from nothing.</p>
       </button>
-      {open && box
-        ? createPortal(
-            <div ref={menuRef} className="popover sys-new-menu" role="menu" style={{ top: box.top, left: box.left, width: box.width }}>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  onBlank();
-                }}
-              >
-                Blank
-              </button>
-              <ImportJson
-                onImport={(file) => {
-                  setOpen(false);
-                  onImport(file);
-                }}
-              />
-            </div>,
-            document.body,
-          )
-        : null}
+    );
+  }
+
+  return (
+    <article className="sys-card sys-new">
+      <span className="sys-new-mark" aria-hidden="true">
+        <Plus size={16} />
+      </span>
+      <strong>New system</strong>
+      <p>Start from nothing, or bring in a JSON file.</p>
+      <NewSystemActions onBlank={onBlank} onImport={onImport} />
     </article>
   );
 }
@@ -243,7 +261,6 @@ function SystemCard({
 
   function close() {
     setOpen(false);
-    setConfirmDelete(false);
   }
 
   function place() {
@@ -283,16 +300,18 @@ function SystemCard({
 
   return (
     <article className="sys-card">
-      <button type="button" className="sys-open" onClick={onOpen}>
+      <button
+        type="button"
+        className="sys-open"
+        style={{ ["--sys-accent" as string]: accentMark(system.accent) }}
+        onClick={onOpen}
+      >
         <CardPreview system={system} />
         <span className="sys-copy">
           <strong>{name}</strong>
           <span className="sys-meta">
             <em className={`pill ${system.status}`}>{statusLabel(system.status)}</em>
             <em>v{system.version}</em>
-            <em>
-              {foundationsDone(system)}/{FOUNDATION_TOTAL}
-            </em>
             <em>{formatAgo(system.lastExportAt)}</em>
           </span>
         </span>
@@ -328,6 +347,7 @@ function SystemCard({
             <div ref={menuRef} className="popover sys-card-menu" role="menu" style={{ top: box.top, left: box.left }}>
               <p className="popover-label">Color</p>
               <AccentPicker value={system.accent} onChange={onAccent} />
+              <div className="popover-sep" role="separator" />
               <button
                 type="button"
                 role="menuitem"
@@ -344,15 +364,11 @@ function SystemCard({
                   role="menuitem"
                   className="danger-text"
                   onClick={() => {
-                    if (!confirmDelete) {
-                      setConfirmDelete(true);
-                      return;
-                    }
                     close();
-                    onDelete();
+                    setConfirmDelete(true);
                   }}
                 >
-                  {confirmDelete ? "Confirm delete" : "Delete system"}
+                  Delete system
                 </button>
               ) : (
                 <p className="popover-note">Create another system before deleting this one.</p>
@@ -361,6 +377,18 @@ function SystemCard({
             document.body,
           )
         : null}
+      {confirmDelete ? (
+        <ConfirmModal
+          title={`Delete “${name}”?`}
+          description="This permanently removes the system and all of its foundations. It cannot be undone."
+          confirmLabel="Delete system"
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => {
+            setConfirmDelete(false);
+            onDelete();
+          }}
+        />
+      ) : null}
     </article>
   );
 }

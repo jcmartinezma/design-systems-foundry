@@ -21,8 +21,8 @@ type Props = {
 export function Rail(props: Props) {
   return (
     <aside className="rail">
-      <div className="mark" title="DS Foundry">
-        <img src="/brand/dsfoundry-negative.svg" alt="DS Foundry" />
+      <div className="mark" title="Foundry">
+        <img src="/brand/foundry-negative.svg" alt="Foundry" />
       </div>
       <div className="rail-scroll">
         <button

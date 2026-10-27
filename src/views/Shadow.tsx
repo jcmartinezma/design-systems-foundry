@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { RangeInput } from "../components/RangeInput";
 import { generateShadow, normalizeHex, parseHex, shadowCss } from "../../shared/shadow";
 import type { ShadowLevel, ShadowScale } from "../../shared/types";
 
@@ -31,8 +32,7 @@ export function ShadowView({ scale, onChange }: Props) {
         <div className="spacing-layout">
           <div className="spacing-options">
             <p className="hint">
-              Each token is a shadow. <b>shadow/0</b> has no shadow. The name <b>shadow/100</b> is the step’s
-              place in the list. Move a slider and the shadows rebuild. Opacity stays on its step.
+              Choose the tokens used for shadow effects. Each level generates five tokens (Y, Blur, Spread, Opacity, and the composite shadow).
             </p>
             <div className="type-controls elev-controls">
               <label>
@@ -213,8 +213,7 @@ function SliderNumber({
           }}
         />
       </span>
-      <input
-        type="range"
+      <RangeInput
         min={min}
         max={max}
         step={step}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
+import { RangeInput } from "../components/RangeInput";
 import {
   addBlurValue,
   BLUR_COUNT_MAX,
@@ -56,21 +57,9 @@ export function BlurView({ scale, onChange, onToast }: Props) {
         <div className="spacing-layout">
           <div className="spacing-options">
             <p className="hint">
-              Each token is a blur radius. Step 0 is always no blur, 0 px. The name <b>blur/100</b> is the step’s place
-              in the list, not the number of pixels. Click a value to edit it. A generated scale becomes Custom.
+              Choose the tokens used for blur effects. Each token is a blur radius.
             </p>
             <div className="type-controls">
-              <label>
-                <span>Base (px)</span>
-                <CommitNumber
-                  label="Base in pixels"
-                  value={scale.base}
-                  min={1}
-                  max={64}
-                  step={1}
-                  onCommit={(base) => commit(configureBlur(scale, { base: Math.round(base) }))}
-                />
-              </label>
               <div className="mode-field">
                 <span>Scale mode</span>
                 <div className="segment mode-segment" role="radiogroup" aria-label="Scale mode">
@@ -89,11 +78,24 @@ export function BlurView({ scale, onChange, onToast }: Props) {
                 </div>
               </div>
               {scale.mode !== "custom" ? (
-                <label>
-                  <span>Steps · {scale.count}</span>
-                  <div className="base-line">
-                    <input
-                      type="range"
+                <>
+                  <label>
+                    <span>Base (px)</span>
+                    <CommitNumber
+                      label="Base in pixels"
+                      value={scale.base}
+                      min={1}
+                      max={64}
+                      step={1}
+                      onCommit={(base) => commit(configureBlur(scale, { base: Math.round(base) }))}
+                    />
+                  </label>
+                  <label className="slider-field">
+                    <span className="slider-top">
+                      <span>Steps</span>
+                      <output>{scale.count}</output>
+                    </span>
+                    <RangeInput
                       min={BLUR_COUNT_MIN}
                       max={BLUR_COUNT_MAX}
                       step={1}
@@ -101,58 +103,48 @@ export function BlurView({ scale, onChange, onToast }: Props) {
                       value={scale.count}
                       onChange={(event) => commit(configureBlur(scale, { count: Number(event.target.value) }))}
                     />
-                    <CommitNumber
-                      label="Number of steps"
-                      value={scale.count}
-                      min={BLUR_COUNT_MIN}
-                      max={BLUR_COUNT_MAX}
-                      step={1}
-                      onCommit={(count) => commit(configureBlur(scale, { count: Math.round(count) }))}
-                    />
-                  </div>
-                </label>
-              ) : null}
-              {scale.mode === "ratio" ? (
-                <label>
-                  <span>Ratio</span>
-                  <select
-                    aria-label="Ratio"
-                    value={ratioFree ? "custom" : String(presetRatio ?? "custom")}
-                    onChange={(event) => {
-                      if (event.target.value === "custom") {
-                        setRatioFree(true);
-                        return;
-                      }
-                      setRatioFree(false);
-                      commit(configureBlur(scale, { ratio: Number(event.target.value) }));
-                    }}
-                  >
-                    {RATIO_PRESETS.map((ratio) => (
-                      <option key={ratio} value={ratio}>
-                        {ratio}
-                      </option>
-                    ))}
-                    <option value="custom">Custom value</option>
-                  </select>
-                </label>
-              ) : null}
-              {scale.mode === "ratio" && ratioFree ? (
-                <label>
-                  <span>Custom value</span>
-                  <CommitNumber
-                    label="Custom ratio"
-                    value={scale.ratio}
-                    min={1.01}
-                    max={4}
-                    step={0.001}
-                    onCommit={(ratio) => commit(configureBlur(scale, { ratio }))}
-                  />
-                </label>
+                  </label>
+                  {scale.mode === "ratio" ? (
+                    <label>
+                      <span>Ratio</span>
+                      <select
+                        aria-label="Ratio"
+                        value={ratioFree ? "custom" : String(presetRatio ?? "custom")}
+                        onChange={(event) => {
+                          if (event.target.value === "custom") {
+                            setRatioFree(true);
+                            return;
+                          }
+                          setRatioFree(false);
+                          commit(configureBlur(scale, { ratio: Number(event.target.value) }));
+                        }}
+                      >
+                        {RATIO_PRESETS.map((ratio) => (
+                          <option key={ratio} value={ratio}>
+                            {ratio}
+                          </option>
+                        ))}
+                        <option value="custom">Custom value</option>
+                      </select>
+                    </label>
+                  ) : null}
+                  {scale.mode === "ratio" && ratioFree ? (
+                    <label>
+                      <span>Custom value</span>
+                      <CommitNumber
+                        label="Custom ratio"
+                        value={scale.ratio}
+                        min={1.01}
+                        max={4}
+                        step={0.001}
+                        onCommit={(ratio) => commit(configureBlur(scale, { ratio }))}
+                      />
+                    </label>
+                  ) : null}
+                </>
               ) : null}
             </div>
             <p className="status">{MODE_HELP[scale.mode]} A blur scale has 1 to 4 steps, plus blur/0.</p>
-          </div>
-          <div className="spacing-stage">
             {scale.edited && scale.mode === "custom" ? (
               <div className="callout space-banner">
                 <p>
@@ -163,10 +155,17 @@ export function BlurView({ scale, onChange, onToast }: Props) {
                 </p>
               </div>
             ) : null}
+          </div>
+          <div className="spacing-stage">
             <h2>Preview</h2>
             <div className="space-list blur-list">
               {scale.steps.map((step) => (
                 <div key={step.id} className="space-item">
+                  {step.offGrid ? (
+                    <p className="space-note">
+                      Not a multiple of {formatSpacingPx(scale.base / 2)} px. It stays in the scale.
+                    </p>
+                  ) : null}
                   <div className="space-row blur-row">
                     <span className="space-token">blur/{step.name}</span>
                     {step.px === 0 ? (
@@ -192,11 +191,6 @@ export function BlurView({ scale, onChange, onToast }: Props) {
                       <i style={{ filter: `blur(${step.px}px)` }} />
                     </i>
                   </div>
-                  {step.offGrid ? (
-                    <p className="space-note">
-                      Not a multiple of {formatSpacingPx(scale.base / 2)} px. It stays in the scale.
-                    </p>
-                  ) : null}
                 </div>
               ))}
             </div>

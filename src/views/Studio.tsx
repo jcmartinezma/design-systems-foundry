@@ -155,7 +155,6 @@ export function Studio({ colors, preview, onChange, onToast }: Props) {
             </div>
           ) : (
             <div className="zone">
-              <p className="eyebrow">Contrast</p>
               <p className="hint">
                 Every ramp, each step on white and near-black. The sample uses that step’s color, the same as the swatches.
                 Green passes the same bar. Red fails it. The marked column follows the Light/Dark preview.

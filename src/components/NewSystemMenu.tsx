@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
+import { enablePublish } from "../features";
 
 type Props = {
   onBlank: () => void;
@@ -41,6 +42,20 @@ export function NewSystemMenu({ onBlank, onImport }: Props) {
       window.removeEventListener("scroll", place, true);
     };
   }, [open]);
+
+  if (!enablePublish) {
+    return (
+      <button
+        type="button"
+        className="rail-btn"
+        title="New system"
+        aria-label="New system"
+        onClick={onBlank}
+      >
+        <Plus size={18} />
+      </button>
+    );
+  }
 
   return (
     <div className="menu-anchor rail-menu" ref={anchorRef}>

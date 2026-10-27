@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { RangeInput } from "../components/RangeInput";
 import { generateTimes } from "../../shared/motion";
 import type { MotionCurve, MotionScale } from "../../shared/types";
 
@@ -37,9 +38,7 @@ export function MotionView({ scale, onChange }: Props) {
         <div className="spacing-layout">
           <div className="spacing-options">
             <p className="hint">
-              Motion is time. <b>Duration</b> is how long a change takes. <b>Delay</b> is how long it waits before it
-              starts. The name is the step’s place in the list, not a role. <b>motion/duration/0</b> and{" "}
-              <b>motion/delay/0</b> are 0 ms. <b>/100</b> is the base. Each next step multiplies that base by the ratio.
+              Choose the tokens used for motion effects. Each token is a duration or delay.
             </p>
             <div className="type-controls elev-controls">
               <SliderNumber
@@ -107,7 +106,7 @@ export function MotionView({ scale, onChange }: Props) {
           <div className="spacing-stage">
             <h2>Preview</h2>
             <p className="hint">
-              Hover a bar, or focus it with the keyboard. Duration bars use curve 0 and no delay. Delay bars wait, then
+              Hover a bar to preview the motion effect. Duration bars use curve 0 and no delay. Delay bars wait, then
               move for the duration 100. Curve bars play at that same duration so you can compare them.
             </p>
             <h2>Durations</h2>
@@ -255,8 +254,7 @@ function SliderNumber({
           }}
         />
       </span>
-      <input
-        type="range"
+      <RangeInput
         min={min}
         max={max}
         step={step}

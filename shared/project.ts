@@ -1,6 +1,7 @@
 import { systemAccent } from "./accents";
 import { namesForCount } from "./color";
 import { normalizeBlur } from "./blur";
+import { randomRampName } from "./names";
 import { normalizeBorder } from "./border";
 import { normalizeShadow } from "./shadow";
 import { normalizeMotion } from "./motion";
@@ -134,7 +135,7 @@ export function createSystem(name: string, example = false): DesignSystem {
           createRamp("Blue text", { hue: 255, chroma: 0.13, lightnessLight: 0.55, lightnessDark: 0.18 }),
           createRamp("Gray", { hue: 270, chroma: 0.012, easeChroma: false }),
         ]
-      : [createRamp("Color")],
+      : [createRamp(randomRampName([]))],
     type: createTypeCollection("Text"),
     border: normalizeBorder(null),
     spacing: normalizeSpacing(null),
@@ -197,9 +198,12 @@ export function normalizeProject(input: unknown): Project {
       version: 2,
       activeSystemId: project.activeSystemId ?? null,
       tempSystemId: project.tempSystemId ?? null,
-      systems: systems.length > 0 ? systems : [createSystem("Product", true)],
+      systems,
     });
   }
+
+  // Nothing saved yet (or an unreadable file): start with no systems.
+  if (!Array.isArray(project.sets) && !project.type) return createDefaultProject();
 
   const sets = Array.isArray(project?.sets)
     ? project.sets.map((set) => ({
@@ -218,7 +222,13 @@ export function createSet(name: string, ramps: Ramp[] = [createRamp("Color")]): 
   return { id: id(), name, ramps };
 }
 
+/** What a first-time user gets: no design systems at all. */
 export function createDefaultProject(): Project {
+  return { version: 2, activeSystemId: null, tempSystemId: null, systems: [] };
+}
+
+/** A project with one filled-in example system. Used by the self-check, never by the app. */
+export function createExampleProject(): Project {
   const system = createSystem("Product", true);
   return finishProject({ version: 2, activeSystemId: system.id, tempSystemId: null, systems: [system] });
 }
@@ -273,21 +283,60 @@ export function cloneSystem(source: DesignSystem): DesignSystem {
   return copy;
 }
 
+function adoptImported(system: DesignSystem): DesignSystem {
+  system.id = crypto.randomUUID();
+  system.starred = false;
+  system.updatedAt = Date.now();
+  system.lastExportAt = null;
+  return system;
+}
+
+/** Figma/plugin export shape: flattened variables, no editable `colors` ramps. */
+function isTokenExportShape(item: unknown): boolean {
+  if (!item || typeof item !== "object") return false;
+  const value = item as { colors?: unknown; sets?: unknown; definition?: unknown };
+  if (value.definition && typeof value.definition === "object") return false;
+  if (Array.isArray(value.colors)) return false;
+  return Array.isArray(value.sets);
+}
+
+function systemFromImportItem(item: unknown): DesignSystem {
+  if (!item || typeof item !== "object") throw new Error("This JSON has no design system in it.");
+  const value = item as { definition?: unknown; colors?: unknown; sets?: unknown; name?: unknown };
+  if (value.definition && typeof value.definition === "object") {
+    return adoptImported(normalizeSystem(value.definition as DesignSystem));
+  }
+  if (isTokenExportShape(value)) {
+    throw new Error(
+      "This export has no editable system definition. Re-export from Foundry (Copy JSON or Download ZIP) and import that file.",
+    );
+  }
+  return adoptImported(normalizeSystem(value as DesignSystem));
+}
+
 export function systemsFromJson(input: unknown): DesignSystem[] {
   if (!input || typeof input !== "object") throw new Error("This file is not a design system.");
-  const value = input as { kind?: string; systems?: unknown; name?: unknown };
-  if (value.kind === "system" && !Array.isArray(value.systems)) {
-    throw new Error("This is an export file. Import a system or a project JSON instead.");
+  const value = input as { kind?: string; systems?: unknown; definition?: unknown; name?: unknown; sets?: unknown };
+
+  // Single-system export (tokens.json /api/export): prefer embedded definition.
+  if (value.kind === "system") {
+    if (value.definition && typeof value.definition === "object") {
+      return [systemFromImportItem(value)];
+    }
+    throw new Error(
+      "This export has no editable system definition. Re-export from Foundry (Copy JSON or Download ZIP) and import that file.",
+    );
   }
+
+  // Plugin library export (Copy JSON): each entry may carry a definition.
+  if (value.kind === "library" && Array.isArray(value.systems)) {
+    if (value.systems.length === 0) throw new Error("This JSON has no design system in it.");
+    return value.systems.map((item) => systemFromImportItem(item));
+  }
+
   const rawList = Array.isArray(value.systems) ? value.systems : typeof value.name === "string" ? [value] : null;
   if (!rawList || rawList.length === 0) throw new Error("This JSON has no design system in it.");
-  return rawList.map((item) => {
-    const system = normalizeSystem(item as DesignSystem);
-    system.id = crypto.randomUUID();
-    system.starred = false;
-    system.updatedAt = Date.now();
-    return system;
-  });
+  return rawList.map((item) => systemFromImportItem(item));
 }
 
 export function withActiveSystem(project: Project): Project {

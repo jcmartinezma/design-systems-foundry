@@ -3,15 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ORIGIN, PORT } from "../shared/config";
-import { cssForExport, exportSystem, pluginLibrary } from "../shared/export";
-import { blurDtcg } from "../shared/blur";
-import { borderDtcg } from "../shared/border";
-import { radiusDtcg } from "../shared/radius";
-import { spacingDtcg } from "../shared/spacing";
-import { activeSystem, createDefaultProject, normalizeProject, slug } from "../shared/project";
+import { exportSystem, normalizeFoundations, pluginLibrary } from "../shared/export";
+import { foundationZip } from "../shared/exportBundle";
+import { activeSystem, createDefaultProject, normalizeProject } from "../shared/project";
 import type { Project } from "../shared/types";
 import { exportTypeScale } from "../shared/type";
-import { zipStore } from "./zip";
 import { publishSets, testFigmaConnection } from "./figma";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -101,26 +97,18 @@ app.get("/api/export", (_req, res) => {
   res.json(exportSystem(system));
 });
 
-app.get("/api/export/download", (_req, res) => {
+app.get("/api/export/download", (req, res) => {
   const system = activeSystem(readProject());
   if (!system) {
     res.status(404).json({ error: "There is no open design system." });
     return;
   }
-  const file = exportSystem(system);
-  const archive = zipStore([
-    { name: "tokens.json", data: Buffer.from(JSON.stringify(file, null, 2)) },
-    { name: "foundations.css", data: Buffer.from(cssForExport(file)) },
-    { name: "border.dtcg.json", data: Buffer.from(JSON.stringify(borderDtcg(system.border), null, 2)) },
-    { name: "spacing.dtcg.json", data: Buffer.from(JSON.stringify(spacingDtcg(system.spacing), null, 2)) },
-    { name: "radius.dtcg.json", data: Buffer.from(JSON.stringify(radiusDtcg(system.radius), null, 2)) },
-    { name: "blur.dtcg.json", data: Buffer.from(JSON.stringify(blurDtcg(system.blur), null, 2)) },
-  ]);
-  const filename = `${slug(system.name)}-foundations.zip`;
+  const picked = foundationsFromQuery(req.query.foundations);
+  const { filename, bytes } = foundationZip(system, picked);
   res.setHeader("Content-Type", "application/zip");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   res.setHeader("Cache-Control", "no-store");
-  res.send(archive);
+  res.send(Buffer.from(bytes));
 });
 
 app.options("/api/export", (_req, res) => {
@@ -158,7 +146,7 @@ app.post("/api/figma/test", async (req, res) => {
 
 app.post("/api/figma/publish", async (req, res) => {
   try {
-    const body = req.body as { token?: string; fileUrl?: string };
+    const body = req.body as { token?: string; fileUrl?: string; foundations?: unknown };
     const token = typeof body.token === "string" ? body.token.trim() : "";
     const fileUrl = typeof body.fileUrl === "string" ? body.fileUrl.trim() : "";
     const system = activeSystem(readProject());
@@ -166,7 +154,10 @@ app.post("/api/figma/publish", async (req, res) => {
       res.status(400).json({ ok: false, error: "There is no open design system." });
       return;
     }
-    const exported = exportSystem(system).sets.filter((set) => set.variables.length > 0);
+    const picked = Array.isArray(body.foundations)
+      ? normalizeFoundations(body.foundations.filter((item): item is string => typeof item === "string"))
+      : undefined;
+    const exported = exportSystem(system, picked).sets.filter((set) => set.variables.length > 0);
     if (exported.length === 0) {
       res.status(400).json({ ok: false, error: "This system has no variables to publish." });
       return;
@@ -177,6 +168,12 @@ app.post("/api/figma/publish", async (req, res) => {
     res.status(400).json({ ok: false, error: errorMessage(error) });
   }
 });
+
+function foundationsFromQuery(value: unknown): ReturnType<typeof normalizeFoundations> {
+  if (value === undefined) return undefined;
+  const raw = Array.isArray(value) ? value.map(String).join(",") : String(value);
+  return normalizeFoundations(raw.split(",").map((part) => part.trim()).filter(Boolean));
+}
 
 function allowPlugin(res: express.Response): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -207,11 +204,11 @@ if (process.env.NODE_ENV === "production") {
 
 function listen(): void {
   app.listen(PORT, "127.0.0.1", () => {
-    console.log(`DSfoundry en ${ORIGIN}`);
+    console.log(`Foundry en ${ORIGIN}`);
   });
 
   const ipv6 = app.listen(PORT, "::1", () => {
-    console.log(`DSfoundry at http://localhost:${PORT}`);
+    console.log(`Foundry at http://localhost:${PORT}`);
   });
   ipv6.on("error", (error: NodeJS.ErrnoException) => {
     if (error.code === "EADDRINUSE" || error.code === "EAFNOSUPPORT" || error.code === "EINVAL") return;

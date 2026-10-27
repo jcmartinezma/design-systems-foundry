@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
+import { RangeInput } from "../components/RangeInput";
 import {
   RATIO_PRESETS,
   SPACING_MODE_LABEL,
@@ -54,21 +55,9 @@ export function SpacingView({ scale, onChange, onToast }: Props) {
         <div className="spacing-layout">
           <div className="spacing-options">
           <p className="hint">
-            Each token is a distance. Step 0 is always 0 px. The name <b>spacing/100</b> is the step’s place in the
-            list, not the number of pixels. Click a value to edit it. A generated scale becomes Custom.
+            Choose the tokens used for spacings and gaps. Each token is a distance.
           </p>
           <div className="type-controls">
-            <label>
-              <span>Base (px)</span>
-              <CommitNumber
-                label="Base in pixels"
-                value={scale.base}
-                min={1}
-                max={64}
-                step={1}
-                onCommit={(base) => commit(configureSpacing(scale, { base: Math.round(base) }))}
-              />
-            </label>
             <div className="mode-field">
               <span>Scale mode</span>
               <div className="segment mode-segment" role="radiogroup" aria-label="Scale mode">
@@ -87,11 +76,24 @@ export function SpacingView({ scale, onChange, onToast }: Props) {
               </div>
             </div>
             {scale.mode !== "custom" ? (
-              <label>
-                <span>Steps · {scale.count}</span>
-                <div className="base-line">
-                  <input
-                    type="range"
+              <>
+                <label>
+                  <span>Base (px)</span>
+                  <CommitNumber
+                    label="Base in pixels"
+                    value={scale.base}
+                    min={1}
+                    max={64}
+                    step={1}
+                    onCommit={(base) => commit(configureSpacing(scale, { base: Math.round(base) }))}
+                  />
+                </label>
+                <label className="slider-field">
+                  <span className="slider-top">
+                    <span>Steps</span>
+                    <output>{scale.count}</output>
+                  </span>
+                  <RangeInput
                     min={4}
                     max={16}
                     step={1}
@@ -99,71 +101,61 @@ export function SpacingView({ scale, onChange, onToast }: Props) {
                     value={scale.count}
                     onChange={(event) => commit(configureSpacing(scale, { count: Number(event.target.value) }))}
                   />
-                  <CommitNumber
-                    label="Number of steps"
-                    value={scale.count}
-                    min={4}
-                    max={16}
-                    step={1}
-                    onCommit={(count) => commit(configureSpacing(scale, { count: Math.round(count) }))}
+                </label>
+                {scale.mode === "ratio" ? (
+                  <label>
+                    <span>Ratio</span>
+                    <select
+                      aria-label="Ratio"
+                      value={ratioFree ? "custom" : String(presetRatio ?? "custom")}
+                      onChange={(event) => {
+                        if (event.target.value === "custom") {
+                          setRatioFree(true);
+                          return;
+                        }
+                        setRatioFree(false);
+                        commit(configureSpacing(scale, { ratio: Number(event.target.value) }));
+                      }}
+                    >
+                      {RATIO_PRESETS.map((ratio) => (
+                        <option key={ratio} value={ratio}>
+                          {ratio}
+                        </option>
+                      ))}
+                      <option value="custom">Custom value</option>
+                    </select>
+                  </label>
+                ) : null}
+                {scale.mode === "ratio" && ratioFree ? (
+                  <label>
+                    <span>Custom value</span>
+                    <CommitNumber
+                      label="Custom ratio"
+                      value={scale.ratio}
+                      min={1.01}
+                      max={4}
+                      step={0.001}
+                      onCommit={(ratio) => commit(configureSpacing(scale, { ratio }))}
+                    />
+                  </label>
+                ) : null}
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={scale.micro}
+                    onChange={(event) => commit(configureSpacing(scale, { micro: event.target.checked }))}
                   />
-                </div>
-              </label>
+                  <span>Micro steps</span>
+                </label>
+              </>
             ) : null}
-            {scale.mode === "ratio" ? (
-              <label>
-                <span>Ratio</span>
-                <select
-                  aria-label="Ratio"
-                  value={ratioFree ? "custom" : String(presetRatio ?? "custom")}
-                  onChange={(event) => {
-                    if (event.target.value === "custom") {
-                      setRatioFree(true);
-                      return;
-                    }
-                    setRatioFree(false);
-                    commit(configureSpacing(scale, { ratio: Number(event.target.value) }));
-                  }}
-                >
-                  {RATIO_PRESETS.map((ratio) => (
-                    <option key={ratio} value={ratio}>
-                      {ratio}
-                    </option>
-                  ))}
-                  <option value="custom">Custom value</option>
-                </select>
-              </label>
-            ) : null}
-            {scale.mode === "ratio" && ratioFree ? (
-              <label>
-                <span>Custom value</span>
-                <CommitNumber
-                  label="Custom ratio"
-                  value={scale.ratio}
-                  min={1.01}
-                  max={4}
-                  step={0.001}
-                  onCommit={(ratio) => commit(configureSpacing(scale, { ratio }))}
-                />
-              </label>
-            ) : null}
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={scale.micro}
-                onChange={(event) => commit(configureSpacing(scale, { micro: event.target.checked }))}
-              />
-              <span>Micro steps</span>
-            </label>
           </div>
           <p className="status">
             {MODE_HELP[scale.mode]}
-            {scale.micro
+            {scale.mode !== "custom" && scale.micro
               ? ` Micro steps: ${formatSpacingPx(scale.base / 2)} px${scale.base === 4 ? " and 6 px" : ""}, after 0.`
               : ""}
           </p>
-          </div>
-          <div className="spacing-stage">
           {scale.edited && scale.mode === "custom" ? (
             <div className="callout space-banner">
               <p>
@@ -174,10 +166,17 @@ export function SpacingView({ scale, onChange, onToast }: Props) {
               </p>
             </div>
           ) : null}
+          </div>
+          <div className="spacing-stage">
           <h2>Preview</h2>
           <div className="space-list">
             {scale.steps.map((step) => (
               <div key={step.id} className="space-item">
+                {step.offGrid ? (
+                  <p className="space-note">
+                    Not a multiple of {formatSpacingPx(scale.base / 2)} px. It stays in the scale.
+                  </p>
+                ) : null}
                 <div className="space-row">
                   <span className="space-token">
                     spacing/{step.name}
@@ -210,11 +209,6 @@ export function SpacingView({ scale, onChange, onToast }: Props) {
                     <span />
                   )}
                 </div>
-                {step.offGrid ? (
-                  <p className="space-note">
-                    Not a multiple of {formatSpacingPx(scale.base / 2)} px. It stays in the scale.
-                  </p>
-                ) : null}
               </div>
             ))}
           </div>

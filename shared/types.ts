@@ -231,6 +231,8 @@ export type ExportFile = {
   id: string;
   name: string;
   sets: ExportSet[];
+  /** Full editable system. Present so the same JSON can recreate a DS in the app. */
+  definition: DesignSystem;
 };
 
 export type Stop = {
