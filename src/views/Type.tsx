@@ -7,6 +7,8 @@ import {
   MAX_STEPS,
   ratioValue,
   REM_PX,
+  sanitizeFontFamily,
+  sanitizeFontFamilyInput,
   stepsForCollection,
   TYPE_RATIOS,
 } from "../../shared/type";
@@ -141,7 +143,10 @@ export function TypeView({ scale, onChange }: Props) {
                     spellCheck={false}
                     placeholder="Font name"
                     aria-label={`Name of ${familyTokenName(index)}`}
-                    onChange={(event) => patchFamily({ ...family, name: event.target.value })}
+                    onChange={(event) =>
+                      patchFamily({ ...family, name: sanitizeFontFamilyInput(event.target.value) })
+                    }
+                    onBlur={() => patchFamily({ ...family, name: sanitizeFontFamily(family.name) })}
                   />
                   <button
                     type="button"

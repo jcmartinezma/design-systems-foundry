@@ -1,14 +1,17 @@
-# Foundry
+# What is DSFoundry?
 
-A local tool for building design system foundations and exporting them for design and code.
+A tool for building design system foundations and exporting them for design and code.
 
-You define the basics — **color, type, border, spacing, radius, shadow, motion, and blur** — then export to **CSS**, **JSON**, or **Figma**.
+Define **color, type, border, spacing, radius, shadow, motion, and blur** in one place, then export to **CSS**, **JSON**, or **Figma**.
 
-Your systems live in this browser on your machine. Figma tokens and file links stay in the browser too and are never written into project files.
+Every time I started a new design system, defining foundations meant the same grind: previewing and generating values by hand, then pushing scale decisions through disconnected Figma layers. Plugins and tools usually solved only one token type. Foundry is a broader answer to that problem.
+
+**Try it:** [foundry.jcmartinez.net](https://foundry.jcmartinez.net)
 
 ![Color ramps editor](docs/screenshot-color.png)
 
 ![Blur scale and examples](docs/screenshot-blur.png)
+
 
 ## Features
 

@@ -142,8 +142,21 @@ export function createTypeCollection(name: string, id?: string): TypeCollection 
   };
 }
 
+/** Letters, numbers, and spaces only — blocks CSS-breaking symbols. */
+export function sanitizeFontFamilyInput(value: string): string {
+  return value
+    .replace(/[^\p{L}\p{N} ]+/gu, "")
+    .replace(/ {2,}/g, " ")
+    .replace(/^ +/, "")
+    .slice(0, 80);
+}
+
+export function sanitizeFontFamily(value: unknown): string {
+  return sanitizeFontFamilyInput(String(value ?? "")).trim();
+}
+
 function fontFamilyOf(value: unknown): string {
-  return String(value ?? "").trim().slice(0, 80);
+  return sanitizeFontFamily(value);
 }
 
 function normalizeRatioId(value: unknown): TypeRatioId {

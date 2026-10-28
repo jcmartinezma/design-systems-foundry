@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { RangeInput } from "../components/RangeInput";
-import { generateTimes } from "../../shared/motion";
-import type { MotionCurve, MotionScale } from "../../shared/types";
+import {
+  MAX_MOTION_CURVES,
+  addMotionCurve,
+  availableCurveKinds,
+  formatCurveValues,
+  generateTimes,
+  parseCurveValues,
+  removeMotionCurve,
+  renameMotionCurve,
+  setMotionCurveKind,
+  setMotionCurveValues,
+} from "../../shared/motion";
+import type { MotionCurve, MotionCurveKind, MotionScale } from "../../shared/types";
 
-const CURVE_ROLE = [
-  "Starts and ends gently.",
-  "Slows as it arrives.",
-  "Already moving when it starts.",
-  "Keeps a constant speed.",
-];
+/** Longer than the base duration so easing differences are easier to see. */
+const CURVE_PREVIEW_MS = 500;
 
 type Props = {
   scale: MotionScale;
@@ -16,7 +24,7 @@ type Props = {
 };
 
 export function MotionView({ scale, onChange }: Props) {
-  const curve = scale.curves[0]?.curve || "ease";
+  const curve = scale.curves[0]?.curve || "linear";
   const moveMs = scale.durations.find((item) => item.step === 1)?.ms ?? scale.baseMs;
 
   function tune(patch: Partial<Pick<MotionScale, "baseMs" | "baseDelay" | "ratio" | "count">>) {
@@ -28,18 +36,12 @@ export function MotionView({ scale, onChange }: Props) {
     });
   }
 
-  function patchCurve(next: MotionCurve) {
-    onChange({ ...scale, curves: scale.curves.map((item) => (item.id === next.id ? next : item)) });
-  }
-
   return (
     <div className="workspace">
       <section className="editor spacing-editor">
         <div className="spacing-layout">
           <div className="spacing-options">
-            <p className="hint">
-              Choose the tokens used for motion effects. Each token is a duration or delay.
-            </p>
+            <p className="hint">Choose the tokens used for motion effects.</p>
             <div className="type-controls elev-controls">
               <SliderNumber
                 label="Base duration"
@@ -82,62 +84,204 @@ export function MotionView({ scale, onChange }: Props) {
             </p>
 
             <h2>Curves</h2>
-            <p className="hint">
-              A curve is written the same way as in CSS. The name is again the place: <b>motion/curve/0</b>, then 100,
-              200, and 300.
-            </p>
             <div className="motion-curves">
-              {scale.curves.map((item, index) => (
-                <div key={item.id} className="motion-curve">
-                  <span className="space-token">motion/curve/{item.name}</span>
-                  <input
-                    type="text"
-                    aria-label={`Curve of motion/curve/${item.name}`}
-                    value={item.curve}
-                    spellCheck={false}
-                    onChange={(event) => patchCurve({ ...item, curve: event.target.value })}
-                  />
-                  <p>{CURVE_ROLE[index]}</p>
-                </div>
+              {scale.curves.map((item) => (
+                <CurveEditor
+                  key={item.id}
+                  item={item}
+                  kinds={availableCurveKinds(scale.curves, item.id)}
+                  onKind={(kind) => onChange(setMotionCurveKind(scale, item.id, kind))}
+                  onValues={(values) => {
+                    const next = setMotionCurveValues(scale, item.id, values);
+                    if (next !== scale) onChange(next);
+                    return next !== scale;
+                  }}
+                  onRename={(name) => {
+                    const result = renameMotionCurve(scale, item.id, name);
+                    if (result.ok) {
+                      onChange(result.scale);
+                      return null;
+                    }
+                    return result.reason;
+                  }}
+                  onRemove={() => onChange(removeMotionCurve(scale, item.id))}
+                />
               ))}
             </div>
+            {scale.curves.length < MAX_MOTION_CURVES ? (
+              <div className="space-actions">
+                <button type="button" className="add" onClick={() => onChange(addMotionCurve(scale))}>
+                  Add curve
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="spacing-stage">
             <h2>Preview</h2>
-            <p className="hint">
-              Hover a bar to preview the motion effect. Duration bars use curve 0 and no delay. Delay bars wait, then
-              move for the duration 100. Curve bars play at that same duration so you can compare them.
-            </p>
-            <h2>Durations</h2>
-            <TimeList
-              kind="duration"
-              steps={scale.durations}
-              moveMs={moveMs}
-              curve={curve}
-            />
-            <h2>Delays</h2>
-            <TimeList kind="delay" steps={scale.delays} moveMs={moveMs} curve={curve} />
-            <h2>Curves</h2>
-            <div className="motion-list">
-              {scale.curves.map((item) => (
-                <div key={item.id} className="motion-card">
-                  <div className="motion-card-bar">
-                    <span className="space-token">motion/curve/{item.name}</span>
-                    <span className="type-meta">{item.curve}</span>
+            <p className="hint">Hover a bar to preview.</p>
+            <div className="motion-group">
+              <h2>Durations</h2>
+              <TimeList kind="duration" steps={scale.durations} moveMs={moveMs} curve={curve} />
+            </div>
+            <div className="motion-group">
+              <h2>Delays</h2>
+              <TimeList kind="delay" steps={scale.delays} moveMs={moveMs} curve={curve} />
+            </div>
+            <div className="motion-group">
+              <h2>Curves</h2>
+              <p className="hint">Previewed at {CURVE_PREVIEW_MS} ms.</p>
+              <div className="motion-list">
+                {scale.curves.map((item) => (
+                  <div key={item.id} className="motion-card">
+                    <div className="motion-card-bar">
+                      <span className="space-token">motion/curve/{item.name}</span>
+                      <span className="type-meta">{item.curve}</span>
+                    </div>
+                    <MotionPreview
+                      ms={CURVE_PREVIEW_MS}
+                      delay={0}
+                      curve={item.curve}
+                      label={`motion/curve/${item.name}, ${CURVE_PREVIEW_MS} milliseconds`}
+                    />
                   </div>
-                  <MotionPreview
-                    ms={moveMs}
-                    delay={0}
-                    curve={item.curve}
-                    label={`motion/curve/${item.name}, ${moveMs} milliseconds`}
-                  />
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function CurveEditor({
+  item,
+  kinds,
+  onKind,
+  onValues,
+  onRename,
+  onRemove,
+}: {
+  item: MotionCurve;
+  kinds: MotionCurveKind[];
+  onKind: (kind: MotionCurveKind) => void;
+  onValues: (values: [number, number, number, number]) => boolean;
+  onRename: (name: string) => "empty" | "duplicate" | "locked" | null;
+  onRemove: () => void;
+}) {
+  const locked = item.kind === "linear";
+  const [valuesDraft, setValuesDraft] = useState(formatCurveValues(item.values));
+  const [nameDraft, setNameDraft] = useState(item.name);
+  const [nameError, setNameError] = useState<"empty" | "duplicate" | null>(null);
+
+  useEffect(() => setValuesDraft(formatCurveValues(item.values)), [item.id, item.values]);
+  useEffect(() => {
+    setNameDraft(item.name);
+    setNameError(null);
+  }, [item.id, item.name]);
+
+  function commitValues() {
+    const parsed = parseCurveValues(valuesDraft);
+    if (!parsed || !onValues(parsed)) {
+      setValuesDraft(formatCurveValues(item.values));
+    }
+  }
+
+  function commitName() {
+    if (item.kind !== "custom") return;
+    if (nameDraft.trim() === item.name) {
+      setNameError(null);
+      return;
+    }
+    const reason = onRename(nameDraft);
+    if (reason === "duplicate" || reason === "empty") {
+      setNameError(reason);
+      return;
+    }
+    if (reason === "locked") {
+      setNameDraft(item.name);
+      setNameError(null);
+      return;
+    }
+    setNameError(null);
+  }
+
+  return (
+    <div className="motion-curve">
+      <div className="motion-curve-head">
+        {item.kind === "custom" ? (
+          <label className="motion-name">
+            <span>motion/curve/</span>
+            <input
+              type="text"
+              aria-label="Custom curve token name"
+              aria-invalid={nameError ? true : undefined}
+              value={nameDraft}
+              spellCheck={false}
+              onChange={(event) => {
+                setNameDraft(event.target.value);
+                setNameError(null);
+              }}
+              onBlur={commitName}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.currentTarget.blur();
+                }
+              }}
+            />
+          </label>
+        ) : (
+          <span className="space-token">motion/curve/{item.name}</span>
+        )}
+        {locked ? (
+          <span />
+        ) : (
+          <button type="button" className="icon" title="Remove curve" aria-label={`Remove motion/curve/${item.name}`} onClick={onRemove}>
+            <X size={14} />
+          </button>
+        )}
+      </div>
+      {nameError ? (
+        <p className="warn" role="alert">
+          {nameError === "duplicate" ? "That token name is already used." : "Enter a token name."}
+        </p>
+      ) : null}
+      <div className="motion-curve-fields">
+        <label className="motion-curve-field">
+          <span>Type</span>
+          <select
+            aria-label={`Type of motion/curve/${item.name}`}
+            value={item.kind}
+            disabled={locked}
+            onChange={(event) => onKind(event.target.value as MotionCurveKind)}
+          >
+            {kinds.map((kind) => (
+              <option key={kind} value={kind}>
+                {kind}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="motion-curve-field">
+          <span>Values</span>
+          <input
+            type="text"
+            aria-label={`Values of motion/curve/${item.name}`}
+            value={valuesDraft}
+            spellCheck={false}
+            readOnly={locked}
+            disabled={locked}
+            onChange={(event) => setValuesDraft(event.target.value)}
+            onBlur={commitValues}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.currentTarget.blur();
+              }
+            }}
+          />
+        </label>
+      </div>
     </div>
   );
 }
@@ -196,7 +340,7 @@ function MotionPreview({ ms, delay, curve, label }: { ms: number; delay: number;
           transform: on ? "translate(calc(100cqi - 24px), -50%)" : "translate(0, -50%)",
           transitionProperty: "transform",
           transitionDuration: `${Math.max(0, ms)}ms`,
-          transitionTimingFunction: curve || "ease",
+          transitionTimingFunction: curve || "linear",
           transitionDelay: on ? `${Math.max(0, delay)}ms` : "0ms",
         }}
       />

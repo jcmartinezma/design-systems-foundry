@@ -124,9 +124,17 @@ export type MotionDuration = {
   step: number;
 };
 
+/** CSS timing keywords plus a freeform cubic-bezier. */
+export type MotionCurveKind = "linear" | "ease" | "ease-in" | "ease-out" | "ease-in-out" | "custom";
+
 export type MotionCurve = {
   id: string;
+  /** Token suffix: linear, ease, 100, ease-soft… */
   name: string;
+  kind: MotionCurveKind;
+  /** cubic-bezier control points (also shown for CSS keywords). */
+  values: [number, number, number, number];
+  /** CSS timing-function value used in preview and export. */
   curve: string;
 };
 

@@ -78,6 +78,8 @@ export function LibraryPage(props: Props) {
         <EmptyLibrary onBlank={props.onBlank} onImport={props.onImport} />
       ) : (
         <>
+      <NewSystemCard onBlank={props.onBlank} onImport={props.onImport} />
+
       <div className="library-tools">
         <label className="library-search">
           <input
@@ -130,7 +132,6 @@ export function LibraryPage(props: Props) {
             onAccent={(accent) => props.onAccent(system.id, accent)}
           />
         ))}
-        <NewSystemCard onBlank={props.onBlank} onImport={props.onImport} />
       </div>
 
       <ResetApp onReset={props.onReset} />
@@ -211,27 +212,52 @@ function ResetApp({ onReset }: { onReset: () => void }) {
 }
 
 function NewSystemCard({ onBlank, onImport }: { onBlank: () => void; onImport: (file: File) => void }) {
+  const blank = (
+    <>
+      <span className="sys-new-mark" aria-hidden="true">
+        <Plus size={22} strokeWidth={1.75} />
+      </span>
+      <span className="sys-new-copy">
+        <strong>New from scratch</strong>
+        <span>Create a new Design system with default values</span>
+      </span>
+    </>
+  );
+
   if (!enablePublish) {
     return (
-      <button type="button" className="sys-card sys-new sys-new-button" onClick={onBlank}>
-        <span className="sys-new-mark" aria-hidden="true">
-          <Plus size={16} />
-        </span>
-        <strong>New system</strong>
-        <p>Start from nothing.</p>
-      </button>
+      <div className="sys-new-row">
+        <button type="button" className="sys-card sys-new-action sys-new-solo" onClick={onBlank}>
+          {blank}
+        </button>
+      </div>
     );
   }
 
   return (
-    <article className="sys-card sys-new">
-      <span className="sys-new-mark" aria-hidden="true">
-        <Plus size={16} />
-      </span>
-      <strong>New system</strong>
-      <p>Start from nothing, or bring in a JSON file.</p>
-      <NewSystemActions onBlank={onBlank} onImport={onImport} />
-    </article>
+    <div className="sys-new-row">
+      <button type="button" className="sys-card sys-new-action" onClick={onBlank}>
+        {blank}
+      </button>
+      <label className="sys-card sys-new-action">
+        <span className="sys-new-mark" aria-hidden="true">
+          <FileJson size={22} strokeWidth={1.75} />
+        </span>
+        <span className="sys-new-copy">
+          <strong>Import JSON</strong>
+          <span>Load a compatible JSON file.</span>
+        </span>
+        <input
+          type="file"
+          accept="application/json,.json"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) onImport(file);
+          }}
+        />
+      </label>
+    </div>
   );
 }
 

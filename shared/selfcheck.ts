@@ -2,7 +2,14 @@ import { apcaContrast } from "./apca";
 import { contrastVerdict, fromOklch, generateStops } from "./color";
 import { createShadowScale, normalizeShadow, shadowCss } from "./shadow";
 import { cssForExport, exportSystem, pluginLibrary } from "./export";
-import { createMotionScale, durationMs, normalizeMotion } from "./motion";
+import {
+  addMotionCurve,
+  createMotionScale,
+  durationMs,
+  normalizeMotion,
+  renameMotionCurve,
+  setMotionCurveKind,
+} from "./motion";
 import { blurDtcg, blurSpecimens, configureBlur, createBlurScale, editBlurValue } from "./blur";
 import { borderDtcg, borderSpecimens, configureBorder, createBorderScale, editBorderValue } from "./border";
 import { createRadiusScale, editRadiusValue, radiusDtcg, radiusSpecimens, configureRadius } from "./radius";
@@ -285,8 +292,11 @@ if (motion.durations.map((item) => item.name).join(",") !== "0,100,200,300") {
 if (motion.delays.map((item) => item.name).join(",") !== "0,100,200,300" || motion.delays[1]?.ms !== 80) {
   throw new Error("La escala de delay no arranca en motion/delay/100.");
 }
-if (motion.curves.map((item) => item.name).join(",") !== "0,100,200,300") {
-  throw new Error("Las curvas no usan motion/curve/0, 100, 200, 300.");
+if (motion.curves.map((item) => item.name).join(",") !== "linear") {
+  throw new Error("La escala de motion no arranca solo con motion/curve/linear.");
+}
+if (motion.curves[0]?.kind !== "linear" || motion.curves[0]?.curve !== "linear") {
+  throw new Error("La curva por defecto no es la keyword CSS linear.");
 }
 const motionTokens = exportSystem(normalizeSystem({ name: "Move", motion })).sets[0]?.variables ?? [];
 const motionName = (name: string) => motionTokens.find((variable) => variable.name === name);
@@ -296,8 +306,8 @@ if (motionName("motion/duration/100")?.css !== "160ms" || motionName("motion/dur
 if (motionName("motion/delay/100")?.css !== "80ms" || motionName("motion/delay/100")?.code !== "--motion-delay-100") {
   throw new Error("motion/delay/100 no se ha exportado.");
 }
-if (motionName("motion/curve/100")?.code !== "--motion-curve-100") {
-  throw new Error("motion/curve/100 no se ha exportado.");
+if (motionName("motion/curve/linear")?.code !== "--motion-curve-linear" || motionName("motion/curve/linear")?.css !== "linear") {
+  throw new Error("motion/curve/linear no se ha exportado.");
 }
 if (motionTokens.some((variable) => variable.name.startsWith("motion/easing/"))) {
   throw new Error("Las curvas siguen exportándose como easing.");
@@ -312,9 +322,31 @@ const renamedMotion = normalizeMotion({
 if (renamedMotion.durations[0]?.name !== "0" || renamedMotion.durations[1]?.ms !== 160 || renamedMotion.curves[0]?.curve !== "linear") {
   throw new Error("Un motion antiguo no ha pasado a los nombres 0, 100, 200.");
 }
-const legacyCurves = { easings: [{ id: "e", name: "standard", curve: "ease-in" }] };
-if (normalizeMotion(legacyCurves).curves[0]?.name !== "0" || normalizeMotion(legacyCurves).curves[0]?.curve !== "ease-in") {
-  throw new Error("Las curvas antiguas no han pasado a motion/curve.");
+const legacyCurves = normalizeMotion({ easings: [{ id: "e", name: "standard", curve: "ease-in" }] });
+if (legacyCurves.curves[0]?.name !== "linear" || legacyCurves.curves[1]?.name !== "ease-in" || legacyCurves.curves[1]?.curve !== "ease-in") {
+  throw new Error("Las curvas antiguas no han pasado a motion/curve con linear por defecto.");
+}
+const customMotion = normalizeMotion({
+  curves: [
+    { id: "a", name: "linear", kind: "linear", curve: "linear", values: [0, 0, 1, 1] },
+    { id: "b", name: "100", kind: "custom", curve: "cubic-bezier(0.2, 0, 0, 1)", values: [0.2, 0, 0, 1] },
+  ] as const,
+});
+if (customMotion.curves[1]?.name !== "100" || customMotion.curves[1]?.kind !== "custom") {
+  throw new Error("Las curvas custom no conservan motion/curve/100.");
+}
+const withEase = addMotionCurve(createMotionScale());
+if (withEase.curves.map((item) => item.name).join(",") !== "linear,ease") {
+  throw new Error("Add curve no ha añadido motion/curve/ease tras linear.");
+}
+const asCustom = setMotionCurveKind(withEase, withEase.curves[1]!.id, "custom");
+const renamedCustom = renameMotionCurve(asCustom, asCustom.curves[1]!.id, "ease-soft");
+if (!renamedCustom.ok || renamedCustom.scale.curves[1]?.name !== "ease-soft") {
+  throw new Error("No se ha podido renombrar motion/curve/100 a ease-soft.");
+}
+const duplicateName = renameMotionCurve(renamedCustom.scale, renamedCustom.scale.curves[1]!.id, "linear");
+if (duplicateName.ok || duplicateName.reason !== "duplicate") {
+  throw new Error("Un nombre de curva repetido se ha guardado.");
 }
 const legacy = normalizeProject({
   version: 1 as const,
