@@ -12,12 +12,31 @@ import type {
   ColorAlias,
   ColorSet,
   DesignSystem,
+  ExportFoundationId,
   Project,
   Ramp,
   SystemStatus,
   TypeCollection,
   TypeLibrary,
 } from "./types";
+
+const EXPORT_FOUNDATION_IDS: readonly ExportFoundationId[] = [
+  "color",
+  "type",
+  "border",
+  "spacing",
+  "radius",
+  "shadow",
+  "motion",
+  "blur",
+];
+
+/** Missing or invalid input defaults to every foundation; `[]` stays empty. */
+function normalizeExportFoundations(value: unknown): ExportFoundationId[] {
+  if (!Array.isArray(value)) return [...EXPORT_FOUNDATION_IDS];
+  const picked = new Set(value.filter((item): item is string => typeof item === "string"));
+  return EXPORT_FOUNDATION_IDS.filter((id) => picked.has(id));
+}
 
 function id(): string {
   return crypto.randomUUID();
@@ -128,6 +147,7 @@ export function createSystem(name: string, example = false): DesignSystem {
     updatedAt: Date.now(),
     lastExportAt: null,
     lastSection: "color",
+    exportFoundations: normalizeExportFoundations(undefined),
     aliases: [],
     colors: example
       ? [
@@ -168,6 +188,7 @@ export function normalizeSystem(raw: Partial<DesignSystem> | null | undefined): 
           ? "color"
           : savedSection
       : "color",
+    exportFoundations: normalizeExportFoundations(raw?.exportFoundations),
     aliases: normalizeAliases(raw?.aliases),
     colors: Array.isArray(raw?.colors) ? raw.colors.map((ramp) => normalizeRamp(ramp)) : fallback.colors,
     type: raw?.type ? normalizeTypeCollection(raw.type) : fallback.type,

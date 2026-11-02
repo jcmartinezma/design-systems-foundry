@@ -1,29 +1,42 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { cssForExport, downloadFileNames, exportSystem, pluginLibrary } from "../../shared/export";
+import {
+  EXPORT_FOUNDATION_IDS,
+  cssForExport,
+  downloadFileNames,
+  exportSystem,
+  normalizeExportFoundations,
+  pluginLibrary,
+} from "../../shared/export";
 import { foundationZip } from "../../shared/exportBundle";
-import type { DesignSystem } from "../../shared/types";
+import type { DesignSystem, ExportFoundationId } from "../../shared/types";
 import { readExportConnection, writeExportConnection } from "../exportConnection";
 import { enablePublish } from "../features";
 import { FOUNDATIONS, type FoundationId } from "../sections";
 
 type Props = {
   system: DesignSystem;
+  onChange: (system: DesignSystem) => void;
   onToast: (message: string) => void;
   onExported: () => void;
 };
 
 const ALL_FOUNDATIONS = FOUNDATIONS.map((item) => item.id);
 
-export function ExportView({ system, onToast, onExported }: Props) {
+export function ExportView({ system, onChange, onToast, onExported }: Props) {
   const [fileUrl, setFileUrl] = useState(() => (enablePublish ? readExportConnection(system.id).fileUrl : ""));
   const [token, setToken] = useState(() => (enablePublish ? readExportConnection(system.id).token : ""));
-  const [picked, setPicked] = useState<Set<FoundationId>>(() => new Set(ALL_FOUNDATIONS));
   const [manifest, setManifest] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const skipWrite = useRef(true);
+  const allRef = useRef<HTMLInputElement>(null);
+
+  const picked = useMemo(
+    () => new Set<ExportFoundationId>(normalizeExportFoundations(system.exportFoundations)),
+    [system.exportFoundations],
+  );
 
   useEffect(() => {
     if (!enablePublish) return;
@@ -53,6 +66,13 @@ export function ExportView({ system, onToast, onExported }: Props) {
   }, []);
 
   const selected = useMemo(() => ALL_FOUNDATIONS.filter((id) => picked.has(id)), [picked]);
+  const allSelected = selected.length === ALL_FOUNDATIONS.length;
+  const someSelected = selected.length > 0 && !allSelected;
+
+  useEffect(() => {
+    if (allRef.current) allRef.current.indeterminate = someSelected;
+  }, [someSelected]);
+
   const counts = useMemo(() => {
     const map = new Map<FoundationId, number>();
     for (const id of ALL_FOUNDATIONS) {
@@ -68,13 +88,19 @@ export function ExportView({ system, onToast, onExported }: Props) {
   const busy = publishing || testing;
   const zipFiles = downloadFileNames(selected);
 
+  function commitFoundations(next: ExportFoundationId[]) {
+    onChange({ ...system, exportFoundations: normalizeExportFoundations(next) });
+  }
+
   function toggleFoundation(id: FoundationId) {
-    setPicked((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const next = new Set(picked);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    commitFoundations(EXPORT_FOUNDATION_IDS.filter((item) => next.has(item)));
+  }
+
+  function toggleAll() {
+    commitFoundations(allSelected ? [] : [...EXPORT_FOUNDATION_IDS]);
   }
 
   async function copyJson() {
@@ -188,6 +214,16 @@ export function ExportView({ system, onToast, onExported }: Props) {
                 <p>Uncheck a token to leave it out of the export.</p>
               </header>
               <div className="foundation-picks" role="group" aria-label="Foundations to export">
+                <label className="check foundation-pick foundation-pick-all">
+                  <input
+                    ref={allRef}
+                    type="checkbox"
+                    checked={allSelected}
+                    aria-checked={someSelected ? "mixed" : allSelected}
+                    onChange={toggleAll}
+                  />
+                  <span>All tokens</span>
+                </label>
                 {FOUNDATIONS.map((item) => (
                   <label className="check foundation-pick" key={item.id}>
                     <input

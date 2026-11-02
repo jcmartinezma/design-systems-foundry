@@ -1,20 +1,20 @@
 import type { SpacingMode, SpacingOrigin, SpacingScale, SpacingStep } from "./types";
 
-/** Fixed multipliers for Jumps. Count is 4–16, so 16 entries are enough. */
+/** Fixed multipliers for Standard. Count is 4–16, so 16 entries are enough. */
 export const JUMP_MULTIPLIERS = [1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80];
 
 export const RATIO_PRESETS = [1.25, 1.333, 1.5, 1.618, 2];
 
 export const SPACING_MODE_LABEL: Record<SpacingMode, string> = {
+  jumps: "Standard",
   linear: "Linear",
-  jumps: "Jumps",
   ratio: "Ratio",
   fibonacci: "Fibonacci",
   custom: "Custom",
 };
 
-const MODES: SpacingMode[] = ["linear", "jumps", "ratio", "fibonacci", "custom"];
-const GENERATED_MODES = ["linear", "jumps", "ratio", "fibonacci"] as const;
+const MODES: SpacingMode[] = ["jumps", "linear", "ratio", "fibonacci", "custom"];
+const GENERATED_MODES = ["jumps", "linear", "ratio", "fibonacci"] as const;
 const LEGACY_MULTIPLIERS = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 16];
 
 type SpacingInput = {

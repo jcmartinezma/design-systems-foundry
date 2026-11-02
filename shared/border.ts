@@ -57,7 +57,7 @@ function limit(scale: SpacingScale, count: number): BorderScale {
 
 export function createBorderScale(): BorderScale {
   return limit(
-    configureSpacing(createSpacingScale(), { base: 1, mode: "linear", count: BORDER_COUNT_MAX, ratio: 2, micro: false }),
+    configureSpacing(createSpacingScale(), { base: 1, mode: "jumps", count: BORDER_COUNT_MAX, ratio: 2, micro: false }),
     BORDER_COUNT_MAX,
   );
 }

@@ -159,6 +159,16 @@ export type ColorAlias = {
   step: string;
 };
 
+export type ExportFoundationId =
+  | "color"
+  | "type"
+  | "border"
+  | "spacing"
+  | "radius"
+  | "shadow"
+  | "motion"
+  | "blur";
+
 export type DesignSystem = {
   id: string;
   name: string;
@@ -169,6 +179,8 @@ export type DesignSystem = {
   updatedAt: number;
   lastExportAt: number | null;
   lastSection: string;
+  /** Foundations included when copying, downloading, or publishing. */
+  exportFoundations: ExportFoundationId[];
   aliases: ColorAlias[];
   colors: Ramp[];
   type: TypeCollection;

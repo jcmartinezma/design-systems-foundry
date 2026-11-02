@@ -151,7 +151,7 @@ export function RampCard({
         />
 
         <Slider
-          label="Light L"
+          label="Lightness Light"
           min={0}
           max={1}
           step={0.01}
@@ -160,7 +160,7 @@ export function RampCard({
           onChange={(lightnessLight) => onChange({ ...ramp, lightnessLight })}
         />
         <Slider
-          label="Dark L"
+          label="Lightness Dark"
           min={0}
           max={1}
           step={0.01}

@@ -4,7 +4,17 @@ import { figmaVariableName, slug } from "./project";
 import { radiusDimensions } from "./radius";
 import { formatSpacingPx, formatSpacingRem } from "./spacing";
 import { exportTypeScale, familyTokenName, fontWeightSteps, stepsForCollection } from "./type";
-import type { DesignSystem, ExportFile, ExportSet, ExportVariable, TypeCollection, TypeExportFile } from "./types";
+import type {
+  DesignSystem,
+  ExportFile,
+  ExportFoundationId,
+  ExportSet,
+  ExportVariable,
+  TypeCollection,
+  TypeExportFile,
+} from "./types";
+
+export type { ExportFoundationId };
 
 function segment(value: string, fallback: string): string {
   return value.replace(/[.{}]/g, " ").replace(/\s+/g, " ").trim().slice(0, 48) || fallback;
@@ -185,9 +195,16 @@ function blurVariables(system: DesignSystem): ExportVariable[] {
   }));
 }
 
-export const EXPORT_FOUNDATION_IDS = ["color", "type", "border", "spacing", "radius", "shadow", "motion", "blur"] as const;
-
-export type ExportFoundationId = (typeof EXPORT_FOUNDATION_IDS)[number];
+export const EXPORT_FOUNDATION_IDS: readonly ExportFoundationId[] = [
+  "color",
+  "type",
+  "border",
+  "spacing",
+  "radius",
+  "shadow",
+  "motion",
+  "blur",
+];
 
 const foundationBuilders: Record<ExportFoundationId, (system: DesignSystem) => ExportVariable[]> = {
   color: colorVariables,
@@ -204,6 +221,13 @@ const foundationBuilders: Record<ExportFoundationId, (system: DesignSystem) => E
 export function normalizeFoundations(value: readonly string[] | undefined): ExportFoundationId[] | undefined {
   if (value === undefined) return undefined;
   const picked = new Set(value);
+  return EXPORT_FOUNDATION_IDS.filter((id) => picked.has(id));
+}
+
+/** Saved on the system. Missing or invalid input defaults to every foundation; `[]` stays empty. */
+export function normalizeExportFoundations(value: unknown): ExportFoundationId[] {
+  if (!Array.isArray(value)) return [...EXPORT_FOUNDATION_IDS];
+  const picked = new Set(value.filter((item): item is string => typeof item === "string"));
   return EXPORT_FOUNDATION_IDS.filter((id) => picked.has(id));
 }
 

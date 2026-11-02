@@ -16,13 +16,13 @@ import {
 import { RATIO_PRESETS, SPACING_MODE_LABEL, formatSpacingPx, formatSpacingRem } from "../../shared/spacing";
 import type { BorderScale, SpacingMode, SpacingStep } from "../../shared/types";
 
-const MODES: SpacingMode[] = ["linear", "jumps", "ratio", "fibonacci", "custom"];
+const MODES: SpacingMode[] = ["jumps", "linear", "ratio", "fibonacci", "custom"];
 
 const MODE_HELP: Record<SpacingMode, string> = {
-  linear: "Linear multiplies the base by 1, 2, 3, 4…",
-  jumps: "Jumps multiplies the base by 1, 2, 3, 4, 6, 8, 10, 12…",
+  jumps: "Standard multiplies the base by 1, 2, 3, 4, 6, 8, 10, 12... and so on.",
+  linear: "Linear multiplies the base by 1, 2, 3, 4, 5, 6, 7, 8... and so on.",
   ratio: "Ratio starts at the base. Each step multiplies the previous one by the ratio, then rounds to the nearest multiple of half the base.",
-  fibonacci: "Fibonacci multiplies the base by 1, 2, 3, 5, 8, 13…",
+  fibonacci: "Fibonacci multiplies the base by 1, 2, 3, 5, 8, 13... and so on.",
   custom: "Custom keeps the pixel values you type. They sort from small to large and cannot repeat.",
 };
 
@@ -144,7 +144,7 @@ export function BorderView({ scale, onChange, onToast }: Props) {
                 </>
               ) : null}
             </div>
-            <p className="status">{MODE_HELP[scale.mode]} A border scale has 2 to 4 steps.</p>
+            <p className="status">{MODE_HELP[scale.mode]}</p>
             {scale.edited && scale.mode === "custom" ? (
               <div className="callout space-banner">
                 <p>

@@ -415,7 +415,18 @@ button.download,
   color: var(--primary-ink);
   border-color: var(--primary);
 }
-.primary:disabled { opacity: 0.6; cursor: default; }
+.primary:disabled,
+.system-actions > button:disabled,
+.system-menu > button:disabled,
+.bar-actions button:disabled,
+.row button:disabled,
+.panel > button:disabled,
+.path-row > button:disabled,
+.add:disabled,
+.space-actions > button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 
 .ramp-list { display: flex; flex-direction: column; gap: var(--spacing-sm); padding: var(--spacing-sm); }
 .ramp {
@@ -609,6 +620,19 @@ input[type="checkbox"]:checked {
 }
 input[type="checkbox"]:checked::before {
   transform: rotate(45deg) scale(1);
+}
+input[type="checkbox"]:indeterminate {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+input[type="checkbox"]:indeterminate::before {
+  width: 8px;
+  height: 1.5px;
+  margin-bottom: 0;
+  border: none;
+  border-radius: 1px;
+  background: var(--primary-ink);
+  transform: none;
 }
 input[type="checkbox"]:focus-visible {
   outline: 2px solid var(--focus);
@@ -1871,6 +1895,12 @@ button.space-px { cursor: text; }
   width: 100%;
   color: var(--text);
   padding: var(--spacing-2xs) 0;
+}
+.foundation-pick-all {
+  margin-bottom: var(--spacing-2xs);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--line);
+  font-weight: 600;
 }
 .foundation-pick em {
   margin-left: auto;

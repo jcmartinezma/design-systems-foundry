@@ -310,6 +310,7 @@ export function App() {
                         : (
                               <ExportView
                                 system={system}
+                                onChange={(next) => updateSystem(next, false)}
                                 onToast={setToast}
                                 onExported={() =>
                                   patchProject((current) => ({

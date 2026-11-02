@@ -394,6 +394,18 @@ if (colored.systems[0]?.accent !== "violet") throw new Error("El color del siste
 if (normalizeSystem({ name: "X", accent: "rainbow" as never }).accent !== "slate") {
   throw new Error("Un color desconocido no vuelve a transparente.");
 }
+const exportAll = normalizeSystem({ name: "Export all" });
+if (exportAll.exportFoundations.join(",") !== "color,type,border,spacing,radius,shadow,motion,blur") {
+  throw new Error("Un sistema nuevo no marca todas las foundations para export.");
+}
+const exportNone = normalizeSystem({ name: "Export none", exportFoundations: [] });
+if (exportNone.exportFoundations.length !== 0) {
+  throw new Error("Una selección vacía de export no se conserva.");
+}
+const exportPartial = normalizeSystem({ name: "Export partial", exportFoundations: ["color", "spacing", "nope"] as never });
+if (exportPartial.exportFoundations.join(",") !== "color,spacing") {
+  throw new Error("La selección parcial de export no se conserva.");
+}
 if (saved.aliases.length !== 1 || saved.aliases[0]?.name !== "bg/canvas" || saved.aliases[0]?.step !== "500") {
   throw new Error("El semantic no se ha conservado.");
 }
@@ -477,11 +489,11 @@ if (normalizeSystem({ name: "Old" }).radius.steps[1]?.name !== "100") {
   throw new Error("Un sistema antiguo no recibe la escala de radius.");
 }
 const borderScale = createBorderScale();
-if (borderScale.mode !== "linear" || borderScale.base !== 1 || borderScale.count !== 4) {
-  throw new Error("La escala de border nueva no usa base 1, 4 pasos y Linear.");
+if (borderScale.mode !== "jumps" || borderScale.base !== 1 || borderScale.count !== 4) {
+  throw new Error("La escala de border nueva no usa base 1, 4 pasos y Standard.");
 }
 if (borderScale.steps.map((step) => step.px).join(",") !== "1,2,3,4") {
-  throw new Error(`Border lineal: ${borderScale.steps.map((step) => step.px).join(",")}`);
+  throw new Error(`Border standard: ${borderScale.steps.map((step) => step.px).join(",")}`);
 }
 const borderUses = borderSpecimens(borderScale);
 const borderUse = (id: string) => borderUses.find((item) => item.id === id);
