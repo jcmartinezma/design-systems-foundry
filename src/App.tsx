@@ -206,7 +206,7 @@ export function App() {
   }
 
   function deleteSystem(id: string) {
-    if (!project || project.systems.length < 2) return;
+    if (!project) return;
     forgetExportConnection(id);
     patchProject((current) => {
       const systems = current.systems.filter((item) => item.id !== id);
@@ -361,7 +361,6 @@ export function App() {
                 const target = project.systems.find((item) => item.id === id);
                 if (target) updateSystem({ ...target, accent });
               }}
-              canDelete={project.systems.length > 1}
               onBlank={addBlank}
               onImport={enablePublish ? (file) => void importFile(file) : () => undefined}
               onReset={resetApp}
@@ -373,7 +372,6 @@ export function App() {
               <SystemNav
                 system={system}
                 section={screen.section}
-                canDelete={project.systems.length > 1}
                 onSection={goSection}
                 onRename={(name) => updateSystem({ ...system, name })}
                 onStar={() => setStar(system.id, !system.starred)}

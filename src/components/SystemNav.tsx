@@ -10,7 +10,6 @@ import { useDismiss } from "./useDismiss";
 type Props = {
   system: DesignSystem;
   section: SectionId;
-  canDelete: boolean;
   onSection: (section: SectionId) => void;
   onRename: (name: string) => void;
   onStar: () => void;
@@ -82,20 +81,16 @@ export function SystemNav(props: Props) {
               <button type="button" onClick={props.onDuplicate}>
                 Duplicate
               </button>
-              {props.canDelete ? (
-                <button
-                  type="button"
-                  className="danger-text"
-                  onClick={() => {
-                    setMenu(false);
-                    setConfirmDelete(true);
-                  }}
-                >
-                  Delete system
-                </button>
-              ) : (
-                <p className="popover-note">Create another system before deleting this one.</p>
-              )}
+              <button
+                type="button"
+                className="danger-text"
+                onClick={() => {
+                  setMenu(false);
+                  setConfirmDelete(true);
+                }}
+              >
+                Delete system
+              </button>
             </div>
           ) : null}
         </div>

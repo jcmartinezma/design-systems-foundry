@@ -31,7 +31,6 @@ type Props = {
   onDuplicate: (system: DesignSystem) => void;
   onDelete: (id: string) => void;
   onAccent: (id: string, accent: SystemAccent) => void;
-  canDelete: boolean;
   onBlank: () => void;
   onImport: (file: File) => void;
   onReset: () => void;
@@ -124,7 +123,6 @@ export function LibraryPage(props: Props) {
           <SystemCard
             key={system.id}
             system={system}
-            canDelete={props.canDelete}
             onOpen={() => props.onOpen(system.id)}
             onStar={() => props.onStar(system.id, !system.starred)}
             onDuplicate={() => props.onDuplicate(system)}
@@ -263,7 +261,6 @@ function NewSystemCard({ onBlank, onImport }: { onBlank: () => void; onImport: (
 
 function SystemCard({
   system,
-  canDelete,
   onOpen,
   onStar,
   onDuplicate,
@@ -271,7 +268,6 @@ function SystemCard({
   onAccent,
 }: {
   system: DesignSystem;
-  canDelete: boolean;
   onOpen: () => void;
   onStar: () => void;
   onDuplicate: () => void;
@@ -384,21 +380,17 @@ function SystemCard({
               >
                 Duplicate
               </button>
-              {canDelete ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="danger-text"
-                  onClick={() => {
-                    close();
-                    setConfirmDelete(true);
-                  }}
-                >
-                  Delete system
-                </button>
-              ) : (
-                <p className="popover-note">Create another system before deleting this one.</p>
-              )}
+              <button
+                type="button"
+                role="menuitem"
+                className="danger-text"
+                onClick={() => {
+                  close();
+                  setConfirmDelete(true);
+                }}
+              >
+                Delete system
+              </button>
             </div>,
             document.body,
           )
