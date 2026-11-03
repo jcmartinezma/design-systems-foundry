@@ -1934,6 +1934,36 @@ button.download:disabled {
   text-transform: uppercase;
 }
 .settings .panel > .hint { margin: 0 0 var(--spacing-sm); }
+.export-zip-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--text-size-xs);
+}
+.export-zip-table th,
+.export-zip-table td {
+  padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs) 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+.export-zip-table th {
+  color: var(--faint);
+  font-weight: var(--text-weight-semibold);
+  font-size: var(--text-size-xxs);
+  letter-spacing: var(--text-letter-spacing-wide);
+  text-transform: uppercase;
+}
+.export-zip-table td:first-child {
+  white-space: nowrap;
+  padding-right: var(--spacing-sm);
+  width: 1%;
+}
+.export-zip-table code {
+  font-size: inherit;
+  color: var(--text);
+}
+.export-zip-table td:last-child { color: var(--muted); }
 .export-help { margin-top: var(--spacing-sm); max-width: 68ch; }
 .export-help h2 { margin: 0; font-size: var(--text-size-sm); }
 .export-help .lede { margin: var(--spacing-xs) 0 0; color: var(--muted); }

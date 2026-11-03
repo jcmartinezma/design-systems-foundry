@@ -1,3 +1,4 @@
+import { FOUNDRY_SOURCE, FOUNDRY_URL } from "./config";
 import type { FontFamily, TypeCollection, TypeExportFile, TypeLibrary, TypeRatioId } from "./types";
 
 export const TYPE_RATIOS: { id: TypeRatioId; name: string; value: number | null }[] = [
@@ -233,7 +234,8 @@ export function exportTypeScale(scale: TypeCollection): TypeExportFile {
 
 export function exportTypeLibrary(library: TypeLibrary): TypeExportFile {
   return {
-    source: "creator",
+    source: FOUNDRY_SOURCE,
+    url: FOUNDRY_URL,
     kind: "type",
     collections: library.collections.map((collection) => ({
       id: collection.id,

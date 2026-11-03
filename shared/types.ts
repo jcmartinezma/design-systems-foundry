@@ -220,8 +220,9 @@ export type TypeExportCollection = {
 };
 
 export type TypeExportFile = {
-  source: "creator";
+  source: "foundry";
   kind: "type";
+  url?: string;
   collections: TypeExportCollection[];
 };
 
@@ -246,7 +247,8 @@ export type ExportSet = {
 };
 
 export type ExportFile = {
-  source: "creator";
+  source: "foundry";
+  url?: string;
   kind: "system";
   id: string;
   name: string;

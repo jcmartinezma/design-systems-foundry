@@ -1,9 +1,8 @@
 import {
   configureSpacing,
   createSpacingScale,
+  dimensionToken,
   editSpacingValue,
-  formatSpacingPx,
-  formatSpacingRem,
   normalizeSpacing,
   addCustomValue,
   removeCustomValue,
@@ -115,14 +114,10 @@ export function normalizeBorder(raw: Partial<BorderScale> | null | undefined): B
   return limit(spacing, count);
 }
 
-export function borderDtcg(scale: BorderScale): { border: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.foundry.rem": string } }> } {
-  const border: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.foundry.rem": string } }> = {};
+export function borderDtcg(scale: BorderScale): { border: Record<string, ReturnType<typeof dimensionToken>> } {
+  const border: Record<string, ReturnType<typeof dimensionToken>> = {};
   for (const step of scale.steps) {
-    border[step.name] = {
-      $type: "dimension",
-      $value: `${formatSpacingPx(step.px)}px`,
-      $extensions: { "com.foundry.rem": formatSpacingRem(step.px) },
-    };
+    border[step.name] = dimensionToken(step.px);
   }
   return { border };
 }

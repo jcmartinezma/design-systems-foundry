@@ -1,16 +1,16 @@
-import { blurDtcg } from "./blur";
-import { borderDtcg } from "./border";
+import {
+  CORE_FOUNDATION_IDS,
+  coreDocumentFor,
+  isCoreFoundation,
+  tokensCoreDocument,
+} from "./dtcg";
 import {
   cssForExport,
   EXPORT_FOUNDATION_IDS,
   exportSystem,
-  foundationDtcgName,
   normalizeFoundations,
-  type ExportFoundationId,
 } from "./export";
 import { slug } from "./project";
-import { radiusDtcg } from "./radius";
-import { spacingDtcg } from "./spacing";
 import type { DesignSystem } from "./types";
 import { zipStore, type ZipEntry } from "./zip";
 
@@ -22,16 +22,15 @@ export function foundationZipEntries(system: DesignSystem, foundations?: readonl
   const picked = normalizeFoundations(foundations);
   const file = exportSystem(system, picked);
   const include = new Set(picked ?? EXPORT_FOUNDATION_IDS);
-  const dtcg = (id: ExportFoundationId, data: string): ZipEntry[] =>
-    include.has(id) && foundationDtcgName(id) ? [textEntry(foundationDtcgName(id)!, data)] : [];
+  const coreIds = CORE_FOUNDATION_IDS.filter((id) => include.has(id));
 
   return [
-    textEntry("tokens.json", JSON.stringify(file, null, 2)),
+    textEntry("foundry_tokens.json", JSON.stringify(file, null, 2)),
     textEntry("foundations.css", cssForExport(file)),
-    ...dtcg("border", JSON.stringify(borderDtcg(system.border), null, 2)),
-    ...dtcg("spacing", JSON.stringify(spacingDtcg(system.spacing), null, 2)),
-    ...dtcg("radius", JSON.stringify(radiusDtcg(system.radius), null, 2)),
-    ...dtcg("blur", JSON.stringify(blurDtcg(system.blur), null, 2)),
+    textEntry("core/tokens.core.json", JSON.stringify(tokensCoreDocument(system, picked), null, 2)),
+    ...coreIds.map((id) =>
+      textEntry(`core/${id}.core.json`, JSON.stringify(coreDocumentFor(system, id), null, 2)),
+    ),
   ];
 }
 
@@ -44,3 +43,5 @@ export function foundationZip(system: DesignSystem, foundations?: readonly strin
     bytes: zipStore(foundationZipEntries(system, foundations)),
   };
 }
+
+export { isCoreFoundation };

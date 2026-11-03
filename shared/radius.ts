@@ -1,9 +1,8 @@
 import {
   configureSpacing,
   createSpacingScale,
+  dimensionToken,
   editSpacingValue,
-  formatSpacingPx,
-  formatSpacingRem,
   normalizeSpacing,
   addCustomValue,
   removeCustomValue,
@@ -138,14 +137,10 @@ export function radiusDimensions(scale: RadiusScale): RadiusDimension[] {
   return steps;
 }
 
-export function radiusDtcg(scale: RadiusScale): { radius: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.foundry.rem": string } }> } {
-  const radius: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.foundry.rem": string } }> = {};
+export function radiusDtcg(scale: RadiusScale): { radius: Record<string, ReturnType<typeof dimensionToken>> } {
+  const radius: Record<string, ReturnType<typeof dimensionToken>> = {};
   for (const step of radiusDimensions(scale)) {
-    radius[step.name] = {
-      $type: "dimension",
-      $value: `${formatSpacingPx(step.px)}px`,
-      $extensions: { "com.foundry.rem": formatSpacingRem(step.px) },
-    };
+    radius[step.name] = dimensionToken(step.px);
   }
   return { radius };
 }

@@ -44,10 +44,11 @@ export function zipStore(entries: ZipEntry[]): Uint8Array {
   let offset = 0;
 
   for (const entry of entries) {
-    if (entry.name.includes("..") || entry.name.includes("/") || entry.name.includes("\\")) {
+    const path = entry.name.replace(/\\/g, "/");
+    if (!path || path.startsWith("/") || path.includes("..") || path.endsWith("/")) {
       throw new Error("File name not allowed inside the ZIP.");
     }
-    const name = new TextEncoder().encode(entry.name);
+    const name = new TextEncoder().encode(path);
     const crc = crc32(entry.data);
     const local = new Uint8Array(30 + name.length);
     writeUint32(local, 0, 0x04034b50);

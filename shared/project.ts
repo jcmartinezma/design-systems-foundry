@@ -339,7 +339,7 @@ export function systemsFromJson(input: unknown): DesignSystem[] {
   if (!input || typeof input !== "object") throw new Error("This file is not a design system.");
   const value = input as { kind?: string; systems?: unknown; definition?: unknown; name?: unknown; sets?: unknown };
 
-  // Single-system export (tokens.json /api/export): prefer embedded definition.
+  // Single-system export (foundry_tokens.json /api/export): prefer embedded definition.
   if (value.kind === "system") {
     if (value.definition && typeof value.definition === "object") {
       return [systemFromImportItem(value)];

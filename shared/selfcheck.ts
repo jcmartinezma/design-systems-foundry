@@ -12,6 +12,8 @@ import {
 } from "./motion";
 import { blurDtcg, blurSpecimens, configureBlur, createBlurScale, editBlurValue } from "./blur";
 import { borderDtcg, borderSpecimens, configureBorder, createBorderScale, editBorderValue } from "./border";
+import { DTCG_FORMAT_SCHEMA, tokensCoreDocument } from "./dtcg";
+import { foundationZipEntries } from "./exportBundle";
 import { createRadiusScale, editRadiusValue, radiusDtcg, radiusSpecimens, configureRadius } from "./radius";
 import { zipStore } from "./zip";
 import {
@@ -96,6 +98,10 @@ try {
   rejected = true;
 }
 if (!rejected) throw new Error("El ZIP ha aceptado una ruta fuera de la carpeta.");
+const nestedZip = zipStore([{ name: "core/spacing.core.json", data: new TextEncoder().encode("{}") }]);
+if (!new TextDecoder().decode(nestedZip).includes("core/spacing.core.json")) {
+  throw new Error("El ZIP no acepta rutas dentro de core/.");
+}
 
 const scale = typeSteps({ baseSize: 16, baseHeight: 1.5, ratio: 1.25, stepsAbove: 1, stepsBelow: 1 });
 if (scale.map((step) => step.size).join(",") !== "12.8,16,20") {
@@ -239,8 +245,15 @@ if (twoMicros.steps.map((step) => `${step.name}:${step.px}`).join(",") !== "0:0,
   throw new Error(`Dos micros: ${twoMicros.steps.map((step) => `${step.name}:${step.px}`).join(",")}`);
 }
 const dtcg = spacingDtcg(fresh);
-if (dtcg.spacing["100"]?.$type !== "dimension" || dtcg.spacing["100"]?.$value !== "4px" || dtcg.spacing["100"]?.$extensions["com.foundry.rem"] !== "0.25rem") {
-  throw new Error(`DTCG de spacing/100 inesperado: ${JSON.stringify(dtcg.spacing["100"])}`);
+const space100 = dtcg.spacing["100"];
+if (
+  space100?.$type !== "dimension" ||
+  space100.$value.value !== 4 ||
+  space100.$value.unit !== "px" ||
+  space100.$extensions["com.foundry.rem"].value !== 0.25 ||
+  space100.$extensions["com.foundry.rem"].unit !== "rem"
+) {
+  throw new Error(`DTCG de spacing/100 inesperado: ${JSON.stringify(space100)}`);
 }
 if (shadowCss({ y: 0, blur: 0, spread: 0, opacity: 0 }, "#000000") !== "none") {
   throw new Error("La sombra vacía debería ser none.");
@@ -474,7 +487,12 @@ if (tooMany.count !== 4 || tooMany.steps.filter((step) => step.px > 0).length !=
   throw new Error("Radius no debe pasar de 4 pasos positivos.");
 }
 const radiusFile = radiusDtcg(radiusScale);
-if (radiusFile.radius["100"]?.$value !== "4px" || radiusFile.radius.full?.$value !== "9999px") {
+if (
+  radiusFile.radius["100"]?.$value.value !== 4 ||
+  radiusFile.radius["100"]?.$value.unit !== "px" ||
+  radiusFile.radius.full?.$value.value !== 9999 ||
+  radiusFile.radius.full?.$value.unit !== "px"
+) {
   throw new Error(`DTCG de radius inesperado: ${JSON.stringify(radiusFile.radius.full)}`);
 }
 const radiusToken = exported.sets[0]?.variables.find((variable) => variable.name === "radius/100");
@@ -518,7 +536,12 @@ if (tooFew.count !== 2) throw new Error("Border no debe bajar de 2 pasos.");
 const tooWide = configureBorder(borderScale, { count: 8 });
 if (tooWide.count !== 4 || tooWide.steps.length !== 4) throw new Error("Border no debe pasar de 4 pasos.");
 const borderFile = borderDtcg(borderScale);
-if (borderFile.border["100"]?.$value !== "1px" || borderFile.border["400"]?.$value !== "4px") {
+if (
+  borderFile.border["100"]?.$value.value !== 1 ||
+  borderFile.border["100"]?.$value.unit !== "px" ||
+  borderFile.border["400"]?.$value.value !== 4 ||
+  borderFile.border["400"]?.$value.unit !== "px"
+) {
   throw new Error(`DTCG de border inesperado: ${JSON.stringify(borderFile.border["100"])}`);
 }
 const borderToken = exported.sets[0]?.variables.find((variable) => variable.name === "border/100");
@@ -563,7 +586,12 @@ if (tooMuchBlur.count !== 4 || tooMuchBlur.steps.filter((step) => step.px > 0).l
   throw new Error("Blur no debe pasar de 4 pasos positivos.");
 }
 const blurFile = blurDtcg(blurScale);
-if (blurFile.blur["0"]?.$value !== "0px" || blurFile.blur["100"]?.$value !== "4px" || blurFile.blur["200"]?.$value !== "8px") {
+if (
+  blurFile.blur["0"]?.$value.value !== 0 ||
+  blurFile.blur["100"]?.$value.value !== 4 ||
+  blurFile.blur["200"]?.$value.value !== 8 ||
+  blurFile.blur["100"]?.$value.unit !== "px"
+) {
   throw new Error(`DTCG de blur inesperado: ${JSON.stringify(blurFile.blur["100"])}`);
 }
 const blurToken = exported.sets[0]?.variables.find((variable) => variable.name === "blur/100");
@@ -636,24 +664,55 @@ if (!open.definition || open.definition.colors.length !== project.systems[0]!.co
 const source = project.systems[0]!;
 const tokenFile = exportSystem(source);
 if (!tokenFile.definition || tokenFile.definition.id !== source.id) {
-  throw new Error("tokens.json no incluye la definición editable del sistema.");
+  throw new Error("foundry_tokens.json no incluye la definición editable del sistema.");
 }
 const fromTokens = systemsFromJson(tokenFile);
 if (fromTokens.length !== 1 || fromTokens[0]!.id === source.id) {
-  throw new Error("Importar tokens.json no crea un sistema nuevo.");
+  throw new Error("Importar foundry_tokens.json no crea un sistema nuevo.");
 }
 if (
   fromTokens[0]!.colors.length !== source.colors.length ||
   fromTokens[0]!.spacing.steps.length !== source.spacing.steps.length ||
   fromTokens[0]!.name !== source.name
 ) {
-  throw new Error("Importar tokens.json no recrea el design system.");
+  throw new Error("Importar foundry_tokens.json no recrea el design system.");
 }
 const fromLibrary = systemsFromJson(library);
 if (fromLibrary.length !== project.systems.length || fromLibrary[0]!.colors.length !== source.colors.length) {
   throw new Error("Importar el JSON del plugin no recrea los sistemas.");
 }
-const legacyExport = { source: "creator", kind: "system", id: "x", name: "Old", sets: [{ id: "x", name: "Old", variables: [] }] };
+if (tokenFile.source !== "foundry" || tokenFile.url !== "https://foundry.jcmartinez.net") {
+  throw new Error(`foundry_tokens.json source/url inesperados: ${tokenFile.source} ${tokenFile.url}`);
+}
+const coreDoc = tokensCoreDocument(source);
+if (
+  coreDoc.$schema !== DTCG_FORMAT_SCHEMA ||
+  !coreDoc.spacing ||
+  !coreDoc.color ||
+  !coreDoc.font ||
+  !coreDoc.shadow ||
+  !coreDoc.motion
+) {
+  throw new Error(`core/tokens.core.json incompleto: ${JSON.stringify(Object.keys(coreDoc))}`);
+}
+const zipEntries = foundationZipEntries(source);
+const zipNames = zipEntries.map((entry) => entry.name).join(",");
+if (
+  !zipNames.includes("foundry_tokens.json") ||
+  !zipNames.includes("core/tokens.core.json") ||
+  !zipNames.includes("core/spacing.core.json") ||
+  !zipNames.includes("core/color.core.json") ||
+  !zipNames.includes("core/type.core.json") ||
+  !zipNames.includes("core/shadow.core.json") ||
+  !zipNames.includes("core/motion.core.json")
+) {
+  throw new Error(`ZIP sin la estructura core esperada: ${zipNames}`);
+}
+const foundryEntry = zipEntries.find((entry) => entry.name === "foundry_tokens.json");
+if (!foundryEntry || new TextDecoder().decode(foundryEntry.data) !== JSON.stringify(tokenFile, null, 2)) {
+  throw new Error("Copy JSON / foundry_tokens.json no coinciden con exportSystem.");
+}
+const legacyExport = { source: "foundry", kind: "system", id: "x", name: "Old", sets: [{ id: "x", name: "Old", variables: [] }] };
 try {
   systemsFromJson(legacyExport);
   throw new Error("Un export antiguo sin definition debería rechazarse.");

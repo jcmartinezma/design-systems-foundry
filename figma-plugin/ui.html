@@ -246,7 +246,7 @@
         <button id="resume" type="button" hidden>Continue</button>
         <div class="divider" aria-hidden="true">OR</div>
         <div class="json-box">
-          <textarea id="json" placeholder='{"source":"creator","kind":"library","systems":[...]}' spellcheck="false"></textarea>
+          <textarea id="json" placeholder='{"source":"foundry","url":"https://foundry.jcmartinez.net","kind":"library","systems":[...]}' spellcheck="false"></textarea>
           <p class="field-error" id="json-error" aria-live="polite"></p>
           <button class="primary" id="paste-continue" type="button" disabled>Import JSON</button>
         </div>
@@ -369,7 +369,7 @@
       }
 
       function systemsFromParsed(parsed) {
-        if (!parsed || parsed.source !== "creator" || typeof parsed !== "object") return null;
+        if (!parsed || parsed.source !== "foundry" || typeof parsed !== "object") return null;
         if (parsed.kind === "library" && Array.isArray(parsed.systems)) {
           const systems = parsed.systems.filter((item) => item && typeof item.name === "string" && Array.isArray(item.sets));
           return systems.length ? systems : null;
@@ -595,7 +595,8 @@
           pluginMessage: {
             type: "create",
             file: {
-              source: "creator",
+              source: "foundry",
+              url: "https://foundry.jcmartinez.net",
               sets: [{ id: system.id, name: "Primitives", variables }],
             },
           },

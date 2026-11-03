@@ -2,9 +2,8 @@ import {
   addCustomValue,
   configureSpacing,
   createSpacingScale,
+  dimensionToken,
   editSpacingValue,
-  formatSpacingPx,
-  formatSpacingRem,
   normalizeSpacing,
   removeCustomValue,
   restoreSpacing,
@@ -114,14 +113,10 @@ export function normalizeBlur(raw: Partial<BlurScale> | null | undefined): BlurS
   return limit(spacing, count);
 }
 
-export function blurDtcg(scale: BlurScale): { blur: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.foundry.rem": string } }> } {
-  const blur: Record<string, { $type: "dimension"; $value: string; $extensions: { "com.foundry.rem": string } }> = {};
+export function blurDtcg(scale: BlurScale): { blur: Record<string, ReturnType<typeof dimensionToken>> } {
+  const blur: Record<string, ReturnType<typeof dimensionToken>> = {};
   for (const step of scale.steps) {
-    blur[step.name] = {
-      $type: "dimension",
-      $value: `${formatSpacingPx(step.px)}px`,
-      $extensions: { "com.foundry.rem": formatSpacingRem(step.px) },
-    };
+    blur[step.name] = dimensionToken(step.px);
   }
   return { blur };
 }

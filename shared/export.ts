@@ -1,4 +1,6 @@
 import { generateStops } from "./color";
+import { FOUNDRY_SOURCE, FOUNDRY_URL } from "./config";
+import { foundationCorePath, isCoreFoundation, type CoreFoundationId } from "./dtcg";
 import { shadowCss } from "./shadow";
 import { figmaVariableName, slug } from "./project";
 import { radiusDimensions } from "./radius";
@@ -231,19 +233,50 @@ export function normalizeExportFoundations(value: unknown): ExportFoundationId[]
   return EXPORT_FOUNDATION_IDS.filter((id) => picked.has(id));
 }
 
-export function foundationDtcgName(id: ExportFoundationId): string | null {
-  if (id === "border" || id === "spacing" || id === "radius" || id === "blur") return `${id}.dtcg.json`;
-  return null;
+export type DownloadFileEntry = {
+  name: string;
+  description: string;
+};
+
+const CORE_FILE_LABEL: Record<CoreFoundationId, string> = {
+  color: "Color tokens in DTCG format",
+  type: "Typography tokens in DTCG format",
+  border: "Border width tokens in DTCG format",
+  spacing: "Spacing tokens in DTCG format",
+  radius: "Radius tokens in DTCG format",
+  shadow: "Shadow tokens in DTCG format",
+  motion: "Motion tokens in DTCG format",
+  blur: "Blur tokens in DTCG format",
+};
+
+export function downloadZipContents(foundations?: readonly string[]): DownloadFileEntry[] {
+  const picked = normalizeFoundations(foundations) ?? EXPORT_FOUNDATION_IDS;
+  const entries: DownloadFileEntry[] = [
+    {
+      name: "foundry_tokens.json",
+      description: "Foundry export with Figma variables and the editable system definition",
+    },
+    {
+      name: "foundations.css",
+      description: "CSS custom properties for the selected foundations",
+    },
+    {
+      name: "core/tokens.core.json",
+      description: "All selected foundations merged into one DTCG file",
+    },
+  ];
+  for (const id of picked) {
+    if (!isCoreFoundation(id)) continue;
+    entries.push({
+      name: foundationCorePath(id)!,
+      description: CORE_FILE_LABEL[id],
+    });
+  }
+  return entries;
 }
 
 export function downloadFileNames(foundations?: readonly string[]): string[] {
-  const picked = normalizeFoundations(foundations) ?? EXPORT_FOUNDATION_IDS;
-  const names = ["tokens.json", "foundations.css"];
-  for (const id of picked) {
-    const dtcg = foundationDtcgName(id);
-    if (dtcg) names.push(dtcg);
-  }
-  return names;
+  return downloadZipContents(foundations).map((entry) => entry.name);
 }
 
 export function exportSystem(system: DesignSystem, foundations?: readonly string[]): ExportFile {
@@ -251,7 +284,8 @@ export function exportSystem(system: DesignSystem, foundations?: readonly string
   const include = new Set(normalizeFoundations(foundations) ?? EXPORT_FOUNDATION_IDS);
   const variables = EXPORT_FOUNDATION_IDS.filter((id) => include.has(id)).flatMap((id) => foundationBuilders[id](system));
   return {
-    source: "creator",
+    source: FOUNDRY_SOURCE,
+    url: FOUNDRY_URL,
     kind: "system",
     id: system.id,
     name,
@@ -296,14 +330,15 @@ export function pluginSystem(system: DesignSystem, active = false, foundations?:
     type:
       picked === undefined || picked.includes("type")
         ? exportTypeScale(system.type)
-        : { source: "creator", kind: "type", collections: [] },
+        : { source: FOUNDRY_SOURCE, url: FOUNDRY_URL, kind: "type", collections: [] },
     definition: exported.definition,
   };
 }
 
 export function pluginLibrary(systems: DesignSystem[], activeId: string | null, foundations?: readonly string[]) {
   return {
-    source: "creator" as const,
+    source: FOUNDRY_SOURCE,
+    url: FOUNDRY_URL,
     kind: "library" as const,
     systems: systems.map((system) => pluginSystem(system, system.id === activeId, foundations)),
   };

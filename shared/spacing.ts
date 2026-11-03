@@ -188,20 +188,35 @@ export function restoreSpacing(scale: SpacingScale): SpacingScale {
   });
 }
 
+export type DtcgDimensionValue = { value: number; unit: "px" | "rem" };
+
 export type SpacingDtcgToken = {
   $type: "dimension";
-  $value: string;
-  $extensions: { "com.foundry.rem": string };
+  $value: DtcgDimensionValue;
+  $extensions: { "com.foundry.rem": DtcgDimensionValue };
 };
+
+export function dimensionPx(px: number): DtcgDimensionValue {
+  return { value: Number(formatSpacingPx(px)), unit: "px" };
+}
+
+export function dimensionRemFromPx(px: number): DtcgDimensionValue {
+  const rem = Math.round((Number(formatSpacingPx(px)) / 16) * 10000) / 10000;
+  return { value: rem, unit: "rem" };
+}
+
+export function dimensionToken(px: number): SpacingDtcgToken {
+  return {
+    $type: "dimension",
+    $value: dimensionPx(px),
+    $extensions: { "com.foundry.rem": dimensionRemFromPx(px) },
+  };
+}
 
 export function spacingDtcg(scale: SpacingScale): { spacing: Record<string, SpacingDtcgToken> } {
   const spacing: Record<string, SpacingDtcgToken> = {};
   for (const step of scale.steps) {
-    spacing[step.name] = {
-      $type: "dimension",
-      $value: `${formatSpacingPx(step.px)}px`,
-      $extensions: { "com.foundry.rem": formatSpacingRem(step.px) },
-    };
+    spacing[step.name] = dimensionToken(step.px);
   }
   return { spacing };
 }

@@ -2,10 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   EXPORT_FOUNDATION_IDS,
   cssForExport,
-  downloadFileNames,
+  downloadZipContents,
   exportSystem,
   normalizeExportFoundations,
-  pluginLibrary,
 } from "../../shared/export";
 import { foundationZip } from "../../shared/exportBundle";
 import type { DesignSystem, ExportFoundationId } from "../../shared/types";
@@ -86,7 +85,7 @@ export function ExportView({ system, onChange, onToast, onExported }: Props) {
   const hasFoundations = selected.length > 0;
   const canCallApi = enablePublish && token.trim().length > 0 && fileUrl.trim().length > 0;
   const busy = publishing || testing;
-  const zipFiles = downloadFileNames(selected);
+  const zipFiles = downloadZipContents(selected);
 
   function commitFoundations(next: ExportFoundationId[]) {
     onChange({ ...system, exportFoundations: normalizeExportFoundations(next) });
@@ -105,7 +104,7 @@ export function ExportView({ system, onChange, onToast, onExported }: Props) {
 
   async function copyJson() {
     if (!hasFoundations) return;
-    await navigator.clipboard.writeText(JSON.stringify(pluginLibrary([system], system.id, selected), null, 2));
+    await navigator.clipboard.writeText(JSON.stringify(file, null, 2));
     onExported();
     onToast("JSON copied");
   }
@@ -240,8 +239,87 @@ export function ExportView({ system, onChange, onToast, onExported }: Props) {
             </section>
 
             <div className="export-methods">
+              <section className="panel">
+                <header className="panel-head">
+                  <h2>Copy JSON or CSS</h2>
+                  <p>
+                    {enablePublish ? (
+                      <>
+                        JSON matches <b>foundry_tokens.json</b>: Figma variables plus the editable system definition.
+                        Paste it in the plugin if Figma cannot reach this computer, or Import it to recreate a system.
+                        CSS is the custom properties for the web. Lists include only the foundations ticked on the left.
+                      </>
+                    ) : (
+                      <>
+                        JSON matches <b>foundry_tokens.json</b>: the token list and the full editable system definition.
+                        CSS is the custom properties for the web. Lists include only the foundations ticked on the left.
+                      </>
+                    )}
+                  </p>
+                </header>
+                <div className="row">
+                  <button type="button" disabled={!hasFoundations} onClick={() => void copyJson()}>
+                    Copy JSON
+                  </button>
+                  <button type="button" disabled={!hasFoundations} onClick={() => void copyCss()}>
+                    Copy CSS
+                  </button>
+                </div>
+              </section>
+
+              <section className="panel">
+                <header className="panel-head">
+                  <h2>Download ZIP</h2>
+                  <p>A ZIP named after the system. It contains:</p>
+                </header>
+                <div className="table-wrap">
+                  <table className="export-zip-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">File</th>
+                        <th scope="col">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {zipFiles.map((entry) => (
+                        <tr key={entry.name}>
+                          <td>
+                            <code>{entry.name}</code>
+                          </td>
+                          <td>{entry.description}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button type="button" className="download" disabled={!hasFoundations} onClick={downloadZip}>
+                  Download ZIP
+                </button>
+              </section>
+
               {enablePublish ? (
                 <>
+                  <section className="panel">
+                    <header className="panel-head">
+                      <div className="panel-title">
+                        <h2>Figma plugin</h2>
+                        <span className="method-tag">Local</span>
+                      </div>
+                      <p>Import tokens to Figma through the local server and API.</p>
+                    </header>
+                    <ol>
+                      <li>In Figma: main menu → Plugins → Development → Import plugin from manifest.</li>
+                      <li>Choose this project’s manifest file located in the figma-plugin folder.</li>
+                      <li>Run the Foundry plugin and follow the instructions.</li>
+                    </ol>
+                    <div className="path-row">
+                      <p className="path">{manifest || "The path will appear when the local server responds."}</p>
+                      <button type="button" disabled={!manifest} onClick={() => void copyManifest()}>
+                        Copy path
+                      </button>
+                    </div>
+                  </section>
+
                   <section className="panel">
                     <header className="panel-head">
                       <div className="panel-title">
@@ -296,83 +374,8 @@ export function ExportView({ system, onChange, onToast, onExported }: Props) {
                     {message ? <p className="ok">{message}</p> : null}
                     {error ? <p className="warn">{error}</p> : null}
                   </section>
-
-                  <section className="panel">
-                    <header className="panel-head">
-                      <div className="panel-title">
-                        <h2>Figma plugin</h2>
-                        <span className="method-tag">Local</span>
-                      </div>
-                      <p>Import tokens to Figma through the local server and API.</p>
-                    </header>
-                    <ol>
-                      <li>In Figma: main menu → Plugins → Development → Import plugin from manifest.</li>
-                      <li>Choose this project’s manifest file located in the figma-plugin folder.</li>
-                      <li>Run the Foundry plugin and follow the instructions.</li>
-                    </ol>
-                    <div className="path-row">
-                      <p className="path">{manifest || "The path will appear when the local server responds."}</p>
-                      <button type="button" disabled={!manifest} onClick={() => void copyManifest()}>
-                        Copy path
-                      </button>
-                    </div>
-                  </section>
                 </>
               ) : null}
-
-              <section className="panel">
-                <header className="panel-head">
-                  <h2>Copy JSON or CSS</h2>
-                  <p>
-                    {enablePublish ? (
-                      <>
-                        The same values, in two formats. JSON is the plugin fallback: paste it on the first page if Figma
-                        cannot reach this computer. You can also Import JSON that same file when creating a new system —
-                        it keeps the full editable definition. CSS is the custom properties for the web. Token lists
-                        include only the foundations ticked on the left.
-                      </>
-                    ) : (
-                      <>
-                        The same values, in two formats. JSON carries the token list and the full editable system
-                        definition. CSS is the custom properties for the web. Token lists include only the foundations
-                        ticked on the left.
-                      </>
-                    )}
-                  </p>
-                </header>
-                <div className="row">
-                  <button type="button" disabled={!hasFoundations} onClick={() => void copyJson()}>
-                    Copy JSON
-                  </button>
-                  <button type="button" disabled={!hasFoundations} onClick={() => void copyCss()}>
-                    Copy CSS
-                  </button>
-                </div>
-              </section>
-
-              <section className="panel">
-                <header className="panel-head">
-                  <h2>Download ZIP</h2>
-                  <p>
-                    {enablePublish ? (
-                      <>
-                        A ZIP named after the system. It contains {zipFiles.join(", ")}. <b>tokens.json</b> has the Figma
-                        variables plus the full system definition (so you can Import JSON to recreate the DS). Token lists
-                        and <b>foundations.css</b> include only the foundations ticked on the left.
-                      </>
-                    ) : (
-                      <>
-                        A ZIP named after the system. It contains {zipFiles.join(", ")}. <b>tokens.json</b> has the
-                        variables plus the full system definition. Token lists and <b>foundations.css</b> include only
-                        the foundations ticked on the left.
-                      </>
-                    )}
-                  </p>
-                </header>
-                <button type="button" className="download" disabled={!hasFoundations} onClick={downloadZip}>
-                  Download ZIP
-                </button>
-              </section>
             </div>
           </div>
         </div>
