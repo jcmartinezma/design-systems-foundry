@@ -227,7 +227,8 @@ export function isCoreFoundation(id: string): id is CoreFoundationId {
 
 export function foundationCorePath(id: ExportFoundationId): string | null {
   if (!isCoreFoundation(id)) return null;
-  return `core/${id}.core.json`;
+  const fileId = id === "type" ? "typography" : id;
+  return `core/${fileId}.core.json`;
 }
 
 export function coreGroupsFor(system: DesignSystem, id: CoreFoundationId): Record<string, unknown> {

@@ -702,7 +702,7 @@ if (
   !zipNames.includes("core/tokens.core.json") ||
   !zipNames.includes("core/spacing.core.json") ||
   !zipNames.includes("core/color.core.json") ||
-  !zipNames.includes("core/type.core.json") ||
+  !zipNames.includes("core/typography.core.json") ||
   !zipNames.includes("core/shadow.core.json") ||
   !zipNames.includes("core/motion.core.json")
 ) {

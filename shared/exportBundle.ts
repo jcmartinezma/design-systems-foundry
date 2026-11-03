@@ -1,6 +1,7 @@
 import {
   CORE_FOUNDATION_IDS,
   coreDocumentFor,
+  foundationCorePath,
   isCoreFoundation,
   tokensCoreDocument,
 } from "./dtcg";
@@ -29,7 +30,7 @@ export function foundationZipEntries(system: DesignSystem, foundations?: readonl
     textEntry("foundations.css", cssForExport(file)),
     textEntry("core/tokens.core.json", JSON.stringify(tokensCoreDocument(system, picked), null, 2)),
     ...coreIds.map((id) =>
-      textEntry(`core/${id}.core.json`, JSON.stringify(coreDocumentFor(system, id), null, 2)),
+      textEntry(foundationCorePath(id)!, JSON.stringify(coreDocumentFor(system, id), null, 2)),
     ),
   ];
 }
