@@ -201,7 +201,7 @@ export function createTypeCollection(name: string, id?: string): TypeCollection 
     customRatio: 1.25,
     stepsAbove: 4,
     stepsBelow: 1,
-    families: [{ id: crypto.randomUUID(), name: "Big Caslon" }, ...emptyFamilies(MAX_FAMILIES - 1)],
+    families: [{ id: crypto.randomUUID(), name: "Futura" }, ...emptyFamilies(MAX_FAMILIES - 1)],
     wholePixels: false,
   };
 }
@@ -236,7 +236,7 @@ function normalizeFamilies(raw: LegacyType): FontFamily[] {
       families.push({ id: family.id || crypto.randomUUID(), name: fontFamilyOf(family.name) });
     }
   } else {
-    const first = fontFamilyOf(raw.fontFamily) || "Big Caslon";
+    const first = fontFamilyOf(raw.fontFamily) || "Futura";
     const second = fontFamilyOf(raw.displayFamily);
     families.push({ id: crypto.randomUUID(), name: first });
     if (second && second !== first) families.push({ id: crypto.randomUUID(), name: second });
@@ -331,7 +331,7 @@ export function exportTypeLibrary(library: TypeLibrary): TypeExportFile {
     collections: library.collections.map((collection) => ({
       id: collection.id,
       name: collection.name,
-      fontFamily: collection.families.find((family) => family.name.trim())?.name.trim() || "Big Caslon",
+      fontFamily: collection.families.find((family) => family.name.trim())?.name.trim() || "Futura",
       fontStyle: "Regular",
       lineHeightPercent: 100,
       styles: [],

@@ -1074,7 +1074,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 /* Specificity must beat `.type-controls input:not(...)` or the inner field keeps its own
    border and overlaps the wrapper / unit label. */
-.type-controls .unit-field input[type="number"] {
+.type-controls .unit-field input[type="number"]:not([type="checkbox"]):not([type="range"]):not([type="color"]) {
   flex: 1;
   min-width: 0;
   width: 100%;
