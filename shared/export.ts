@@ -5,7 +5,7 @@ import { shadowCss } from "./shadow";
 import { figmaVariableName, slug } from "./project";
 import { radiusDimensions } from "./radius";
 import { formatSpacingPx, formatSpacingRem } from "./spacing";
-import { exportTypeScale, familyTokenName, fontWeightSteps, stepsForCollection } from "./type";
+import { exportTypeScale, familyTokenName, fontWeightSteps, heightPx, stepsForCollection } from "./type";
 import type {
   DesignSystem,
   ExportFile,
@@ -87,8 +87,9 @@ function typeVariables(type: TypeCollection): ExportVariable[] {
 
   for (const step of stepsForCollection(type)) {
     const name = segment(step.name, "step");
+    const height = heightPx(step.height);
     number(`font/size/${name}`, `${step.size} px · step ${step.step}`, step.size, `${step.size}px`);
-    number(`font/height/${name}`, `${step.height} rem · step ${step.step}`, step.height, `${step.height}rem`);
+    number(`font/height/${name}`, `${height} px · step ${step.step}`, height, `${height}px`);
   }
 
   for (const weight of fontWeightSteps()) {
@@ -133,33 +134,26 @@ function radiusVariables(system: DesignSystem): ExportVariable[] {
 
 function shadowVariables(system: DesignSystem): ExportVariable[] {
   const color = system.shadow.color;
-  return system.shadow.levels.flatMap((level) => {
-    const name = segment(level.name, "level");
-    const shadow = shadowCss(level, color);
-    const shared = `${shadow} · color ${color}`;
-    const number = (part: string, value: number, unit: string): ExportVariable => ({
-      name: `shadow/${name}/${part}`,
-      description: shared,
-      code: cssName(["shadow", name, part]),
-      type: "FLOAT",
-      css: unit === "px" ? `${value}px` : String(value),
-      number: value,
-    });
-    return [
-      number("y", level.y, "px"),
-      number("blur", level.blur, "px"),
-      number("spread", level.spread, "px"),
-      number("opacity", level.opacity, ""),
-      {
-        name: `shadow/${name}`,
-        description: shared,
-        code: cssName(["shadow", name]),
-        type: "STRING",
-        css: shadow,
-        text: shadow,
-      },
-    ];
-  });
+  const parts: { part: "y" | "blur" | "spread" | "opacity"; unit: "px" | ""; read: (level: (typeof system.shadow.levels)[number]) => number }[] = [
+    { part: "y", unit: "px", read: (level) => level.y },
+    { part: "blur", unit: "px", read: (level) => level.blur },
+    { part: "spread", unit: "px", read: (level) => level.spread },
+    { part: "opacity", unit: "", read: (level) => level.opacity },
+  ];
+  return parts.flatMap(({ part, unit, read }) =>
+    system.shadow.levels.map((level) => {
+      const name = segment(level.name, "level");
+      const value = read(level);
+      return {
+        name: `shadow/${part}/${name}`,
+        description: `${shadowCss(level, color)} · color ${color}`,
+        code: cssName(["shadow", part, name]),
+        type: "FLOAT" as const,
+        css: unit === "px" ? `${value}px` : String(value),
+        number: value,
+      };
+    }),
+  );
 }
 
 function motionTimes(kind: "duration" | "delay", steps: DesignSystem["motion"]["durations"]): ExportVariable[] {

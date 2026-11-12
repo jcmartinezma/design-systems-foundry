@@ -21,9 +21,16 @@ type Props = {
 export function Rail(props: Props) {
   return (
     <aside className="rail">
-      <div className="mark" title="Foundry">
-        <img src="/brand/foundry-negative.svg" alt="Foundry" />
-      </div>
+      <button
+        type="button"
+        className="mark"
+        title="All systems"
+        aria-label="All systems"
+        aria-current={props.libraryActive ? "page" : undefined}
+        onClick={props.onLibrary}
+      >
+        <img src="/brand/foundry-negative.svg" alt="" />
+      </button>
       <div className="rail-scroll">
         <button
           type="button"

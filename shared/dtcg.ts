@@ -1,10 +1,9 @@
 import { generateStops } from "./color";
 import { blurDtcg } from "./blur";
 import { borderDtcg } from "./border";
-import { parseHex } from "./shadow";
 import { radiusDtcg } from "./radius";
 import { dimensionToken, spacingDtcg } from "./spacing";
-import { familyTokenName, fontWeightSteps, stepsForCollection } from "./type";
+import { familyTokenName, fontWeightSteps, heightPx, stepsForCollection } from "./type";
 import type {
   DesignSystem,
   ExportFoundationId,
@@ -74,7 +73,7 @@ export function typeDtcg(type: TypeCollection): {
   font: {
     family: Record<string, { $type: "fontFamily"; $value: string; $description?: string }>;
     size: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }>;
-    height: Record<string, { $type: "number"; $value: number; $description?: string }>;
+    height: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }>;
     weight: Record<string, { $type: "fontWeight"; $value: number; $description?: string }>;
   };
 } {
@@ -91,17 +90,17 @@ export function typeDtcg(type: TypeCollection): {
   });
 
   const size: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }> = {};
-  const height: Record<string, { $type: "number"; $value: number; $description?: string }> = {};
+  const height: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }> = {};
   for (const step of stepsForCollection(type)) {
     const name = dtcgName(step.name, "step");
+    const heightValue = heightPx(step.height);
     size[name] = {
       ...dimensionToken(step.size),
       $description: `${step.size} px · step ${step.step}`,
     };
     height[name] = {
-      $type: "number",
-      $value: step.height,
-      $description: `${step.height} rem · step ${step.step}`,
+      ...dimensionToken(heightValue),
+      $description: `${heightValue} px · step ${step.step}`,
     };
   }
 
@@ -118,52 +117,28 @@ export function typeDtcg(type: TypeCollection): {
 }
 
 export function shadowDtcg(scale: ShadowScale): {
-  shadow: Record<
-    string,
-    {
-      $type: "shadow";
-      $value: {
-        color: DtcgColorValue;
-        offsetX: { value: number; unit: "px" };
-        offsetY: { value: number; unit: "px" };
-        blur: { value: number; unit: "px" };
-        spread: { value: number; unit: "px" };
-      };
-      $description?: string;
-    }
-  >;
+  shadow: {
+    y: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }>;
+    blur: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }>;
+    spread: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }>;
+    opacity: Record<string, { $type: "number"; $value: number; $description?: string }>;
+  };
 } {
-  const rgb = parseHex(scale.color) ?? { r: 0, g: 0, b: 0 };
-  const shadow: Record<
-    string,
-    {
-      $type: "shadow";
-      $value: {
-        color: DtcgColorValue;
-        offsetX: { value: number; unit: "px" };
-        offsetY: { value: number; unit: "px" };
-        blur: { value: number; unit: "px" };
-        spread: { value: number; unit: "px" };
-      };
-      $description?: string;
-    }
-  > = {};
+  const y: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }> = {};
+  const blur: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }> = {};
+  const spread: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }> = {};
+  const opacity: Record<string, { $type: "number"; $value: number; $description?: string }> = {};
+  const description = `color ${scale.color}`;
 
   for (const level of scale.levels) {
     const name = dtcgName(level.name, "level");
-    shadow[name] = {
-      $type: "shadow",
-      $description: `color ${scale.color}`,
-      $value: {
-        color: srgbColor(rgb.r / 255, rgb.g / 255, rgb.b / 255, level.opacity, scale.color),
-        offsetX: { value: 0, unit: "px" },
-        offsetY: { value: level.y, unit: "px" },
-        blur: { value: level.blur, unit: "px" },
-        spread: { value: level.spread, unit: "px" },
-      },
-    };
+    y[name] = { ...dimensionToken(level.y), $description: description };
+    blur[name] = { ...dimensionToken(level.blur), $description: description };
+    spread[name] = { ...dimensionToken(level.spread), $description: description };
+    opacity[name] = { $type: "number", $value: level.opacity, $description: description };
   }
-  return { shadow };
+
+  return { shadow: { y, blur, spread, opacity } };
 }
 
 export function motionDtcg(scale: MotionScale): {

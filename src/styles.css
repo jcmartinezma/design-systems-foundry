@@ -140,14 +140,23 @@ a:not([class]):focus-visible {
 .mark {
   width: var(--spacing-lg);
   height: var(--spacing-lg);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
   display: grid;
   place-items: center;
+  cursor: pointer;
 }
 .mark img {
   display: block;
-  width: var(--spacing-sm);
+  width: var(--spacing-md);
   height: var(--spacing-md);
   filter: var(--mark-filter);
+}
+.mark:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .activity nav {

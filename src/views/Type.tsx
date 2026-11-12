@@ -3,10 +3,10 @@ import { X } from "lucide-react";
 import { RangeInput } from "../components/RangeInput";
 import {
   familyTokenName,
+  heightPx,
   MAX_FAMILIES,
   MAX_STEPS,
   ratioValue,
-  REM_PX,
   sanitizeFontFamily,
   sanitizeFontFamilyInput,
   stepsForCollection,
@@ -14,7 +14,8 @@ import {
 } from "../../shared/type";
 import type { FontFamily, TypeCollection, TypeRatioId } from "../../shared/types";
 
-const DEFAULT_SAMPLE = "This is how this size reads";
+const DEFAULT_SAMPLE =
+  "This is how this size reads when set in a short paragraph. It should feel comfortable across two or three lines.";
 
 type Props = {
   scale: TypeCollection;
@@ -107,7 +108,8 @@ export function TypeView({ scale, onChange }: Props) {
           </div>
           <p className="status">
             Base is {scale.baseSize} px size and {scale.baseHeight} rem height. The next step is × {ratio.toFixed(3)}.
-            {scale.wholePixels ? " Size rounds to the nearest pixel." : " Size keeps one decimal."} Height stays in rem.
+            {scale.wholePixels ? " Size rounds to the nearest pixel." : " Size keeps one decimal."} Height is set in rem
+            and exported as px.
           </p>
           <div className="type-controls">
             <SliderField
@@ -195,7 +197,7 @@ export function TypeView({ scale, onChange }: Props) {
             </p>
             <div className="type-scale">
               {steps.map((step) => {
-                const linePx = step.height * REM_PX;
+                const linePx = heightPx(step.height);
                 // When font-size is taller than line-height, glyphs paint outside the
                 // line box. Pad each side by half that overflow so rows don't collide.
                 const glyphPad = Math.max(0, (step.size - linePx) / 2);
@@ -209,7 +211,7 @@ export function TypeView({ scale, onChange }: Props) {
                       <span className="type-key">font/size/{step.name}</span>
                       <span className="type-meta">{step.size} px</span>
                       <span className="type-key">font/height/{step.name}</span>
-                      <span className="type-meta">{step.height} rem</span>
+                      <span className="type-meta">{linePx} px</span>
                       {step.step === 0 ? <span className="type-base-tag">Base</span> : null}
                     </div>
                     <p

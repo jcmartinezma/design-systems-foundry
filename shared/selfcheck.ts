@@ -110,7 +110,7 @@ if (scale.map((step) => step.size).join(",") !== "12.8,16,20") {
 if (scale.map((step) => step.height).join(",") !== "1.2,1.5,1.875") {
   throw new Error(`La altura 1.5 rem × 1.25 no cuadra: ${scale.map((step) => step.height).join(",")}`);
 }
-if (scale.map((step) => step.name).join(",") !== "sm,base,lg") {
+if (scale.map((step) => step.name).join(",") !== "100,200,300") {
   throw new Error(`Los nombres de la escala no cuadran: ${scale.map((step) => step.name).join(",")}`);
 }
 if (sizeForStep(16, 1.2, -1) !== 13.3) {
@@ -285,11 +285,20 @@ const shadowWithNone = normalizeShadow({
 if (shadowWithNone.levels.map((level) => level.name).join(",") !== "100,200,300,400,500") {
   throw new Error("Un shadow/0 vacío no se ha eliminado al normalizar.");
 }
-const shadowToken = exportSystem(normalizeSystem({ name: "Elev", shadow })).sets[0]?.variables.find(
-  (variable) => variable.name === "shadow/100",
-);
-if (shadowToken?.code !== "--shadow-100" || !shadowToken.css.includes("px")) {
-  throw new Error(`El token shadow/100 no se ha exportado: ${shadowToken?.name} ${shadowToken?.code}`);
+const shadowExported = exportSystem(normalizeSystem({ name: "Elev", shadow })).sets[0]?.variables ?? [];
+const shadowBlur = shadowExported.find((variable) => variable.name === "shadow/blur/100");
+if (shadowBlur?.code !== "--shadow-blur-100" || !shadowBlur.css.includes("px")) {
+  throw new Error(`El token shadow/blur/100 no se ha exportado: ${shadowBlur?.name} ${shadowBlur?.code}`);
+}
+if (shadowExported.some((variable) => /^shadow\/\d+$/.test(variable.name))) {
+  throw new Error("Los tokens compuestos shadow/100 no deberían exportarse.");
+}
+const shadowNames = shadowExported.map((variable) => variable.name);
+const blurIndex = shadowNames.indexOf("shadow/blur/100");
+const blur200Index = shadowNames.indexOf("shadow/blur/200");
+const spreadIndex = shadowNames.indexOf("shadow/spread/200");
+if (blurIndex < 0 || blur200Index < 0 || spreadIndex < 0 || !(blurIndex < blur200Index && blur200Index < spreadIndex)) {
+  throw new Error(`El orden de shadow no es property/level: ${shadowNames.join(",")}`);
 }
 const legacyShadow = normalizeSystem({ name: "Old", elevation: { ...shadow, baseY: 7 }, lastSection: "elevation" } as never);
 if (legacyShadow.shadow.baseY !== 7 || legacyShadow.lastSection !== "shadow") {
@@ -630,11 +639,17 @@ if (fontName("font/weight/01")?.number !== 200 || fontName("font/weight/03")?.nu
 if (fontVariables.some((variable) => variable.name === "font/weight/regular" || variable.name === "font/weight/bold")) {
   throw new Error("Los pesos siguen usando nombres elegidos a mano.");
 }
-if (fontName("font/size/base")?.number !== 16 || fontName("font/size/lg")?.number !== 20 || fontName("font/height/base")?.css !== "1.5rem") {
-  throw new Error("Cada paso no tiene size en px y height en rem dentro de font.");
+if (fontName("font/size/200")?.number !== 16 || fontName("font/size/300")?.number !== 20 || fontName("font/height/200")?.css !== "24px") {
+  throw new Error("Cada paso no tiene size y height en px dentro de font.");
 }
-if (fontName("font/height/sm")?.number !== 1.2) {
-  throw new Error("La altura por debajo de la base no sigue el ratio.");
+if (fontName("font/height/100")?.number !== 19.2 || fontName("font/height/100")?.css !== "19.2px") {
+  throw new Error("La altura en rem no se ha convertido a px al exportar.");
+}
+if (fontVariables.some((variable) => variable.name.startsWith("font/height/") && variable.css.endsWith("rem"))) {
+  throw new Error("font/height no debe exportarse en rem.");
+}
+if (fontVariables.some((variable) => /font\/(size|height)\/(sm|base|lg|xl)/.test(variable.name))) {
+  throw new Error("font/size y font/height siguen usando nombres semánticos.");
 }
 if (
   fontVariables.some(

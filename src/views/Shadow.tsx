@@ -32,7 +32,7 @@ export function ShadowView({ scale, onChange }: Props) {
         <div className="spacing-layout">
           <div className="spacing-options">
             <p className="hint">
-              Choose the tokens used for shadow effects. Each level generates five tokens (Y, Blur, Spread, Opacity, and the composite shadow).
+              Choose the tokens used for shadow effects. Each level generates four primitive tokens: Y, Blur, Spread, and Opacity.
             </p>
             <div className="type-controls elev-controls">
               <label>
@@ -102,8 +102,8 @@ export function ShadowView({ scale, onChange }: Props) {
               {scale.levels.map((level) => (
                 <SliderNumber
                   key={level.id}
-                  label={`shadow/${level.name}`}
-                  ariaLabel={`Opacity of shadow/${level.name}`}
+                  label={`shadow/opacity/${level.name}`}
+                  ariaLabel={`Opacity of shadow/opacity/${level.name}`}
                   value={level.opacity}
                   min={0}
                   max={1}
@@ -139,7 +139,7 @@ export function ShadowView({ scale, onChange }: Props) {
                   const shadow = shadowCss(level, normalizeHex(scale.color));
                   return (
                     <div key={level.id} className="elev-card" style={{ boxShadow: shadow }}>
-                      <strong>shadow/{level.name}</strong>
+                      <strong>{level.name}</strong>
                       <span>{stepSummary(level, shadow)}</span>
                     </div>
                   );

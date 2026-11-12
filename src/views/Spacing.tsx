@@ -174,11 +174,6 @@ export function SpacingView({ scale, onChange, onToast }: Props) {
           <div className="space-list">
             {scale.steps.map((step) => (
               <div key={step.id} className="space-item">
-                {step.offGrid ? (
-                  <p className="space-note">
-                    Not a multiple of {formatSpacingPx(scale.base / 2)} px. It stays in the scale.
-                  </p>
-                ) : null}
                 <div className="space-row">
                   <span className="space-token">
                     spacing/{step.name}

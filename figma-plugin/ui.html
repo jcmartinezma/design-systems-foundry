@@ -2,6 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Rethink+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
     <style>
       /*
         Figma plugin UI is a standalone HTML string (no node_modules).
@@ -11,6 +14,7 @@
         color-scheme: dark;
         --color-bg-primary: #141414;
         --color-bg-secondary: #242424;
+        --color-bg-tertiary: #4a4a4a;
         --color-surface-tertiary: #242424;
         --color-surface-tertiary-inverse: #efefef;
         --color-text-primary: #efefef;
@@ -71,13 +75,12 @@
       .brand-mark {
         width: 28px;
         height: 28px;
-        border-radius: var(--border-radius-xs);
-        background: var(--color-surface-tertiary-inverse);
-        display: grid;
-        place-items: center;
         flex-shrink: 0;
+        display: block;
+        overflow: hidden;
+        border-radius: var(--border-radius-xs);
       }
-      .brand-mark svg { display: block; width: 12px; height: 16px; }
+      .brand-mark svg { display: block; width: 28px; height: 28px; }
       .brand-name {
         margin: 0;
         font-family: var(--text-style-display);
@@ -152,7 +155,7 @@
         align-items: center;
         gap: var(--spacing-xs);
         color: var(--color-text-tertiary);
-        font-size: 11px;
+        font-size: var(--text-size-xxs);
         letter-spacing: 0.06em;
         text-transform: uppercase;
       }
@@ -179,34 +182,101 @@
       .list {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: var(--spacing-2xs);
         max-height: 280px;
         overflow: auto;
+        background: transparent;
       }
-      label {
+      .list label {
         display: flex;
         gap: var(--spacing-xs);
         align-items: center;
-        padding: 6px var(--spacing-xs);
-        border-radius: var(--border-radius-xs);
+        min-height: 40px;
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--border-radius-200);
+        background: var(--color-bg-secondary);
+        cursor: pointer;
+        transition: background var(--motion-duration-fast) var(--motion-easing-standard);
       }
-      label:hover { background: var(--color-bg-secondary); }
-      label strong { font-weight: var(--text-weight-semibold); }
-      label em {
+      .list label:hover { background: var(--color-bg-tertiary); }
+      .list label strong {
+        color: var(--color-text-primary);
+        font-family: var(--text-style-base);
+        font-size: var(--text-size-xs);
+        font-weight: var(--text-weight-semibold);
+        line-height: var(--text-line-height-sm);
+        letter-spacing: var(--text-letter-spacing-normal);
+      }
+      .list label em {
         color: var(--color-text-tertiary);
         font-style: normal;
-        font-size: 11px;
+        font-size: var(--text-size-xxs);
+        line-height: var(--text-line-height-sm);
         margin-left: auto;
         white-space: nowrap;
+        font-variant-numeric: tabular-nums;
       }
-      label small { display: block; color: var(--color-text-tertiary); font-size: 11px; }
-      .list label span { display: flex; flex-direction: column; min-width: 0; }
-      .list label:has(input:checked) {
-        background: var(--color-bg-secondary);
-        outline: 1px solid var(--color-border-secondary);
+      .list label span {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        flex: 1;
+      }
+      input[type="checkbox"],
+      input[type="radio"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 14px;
+        height: 14px;
+        margin: 0;
+        flex: none;
+        box-sizing: border-box;
+        border: 1px solid var(--color-border-secondary);
+        border-radius: var(--border-radius-xs);
+        background: var(--color-bg-primary);
+        display: grid;
+        place-content: center;
+        cursor: pointer;
+      }
+      input[type="radio"] { border-radius: 50%; }
+      input[type="checkbox"]::before,
+      input[type="radio"]::before {
+        content: "";
+        transform: scale(0);
+        transform-origin: center;
+      }
+      input[type="checkbox"]::before {
+        width: 3px;
+        height: 6px;
+        margin-bottom: 1px;
+        border: solid var(--color-text-secondary-inverse);
+        border-width: 0 1.5px 1.5px 0;
+        transform: rotate(45deg) scale(0);
+      }
+      input[type="radio"]::before {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--color-text-secondary-inverse);
+      }
+      input[type="checkbox"]:checked,
+      input[type="radio"]:checked {
+        background: var(--color-surface-tertiary-inverse);
+        border-color: var(--color-surface-tertiary-inverse);
+      }
+      input[type="checkbox"]:checked::before {
+        transform: rotate(45deg) scale(1);
+      }
+      input[type="radio"]:checked::before {
+        transform: scale(1);
+      }
+      input[type="checkbox"]:focus-visible,
+      input[type="radio"]:focus-visible {
+        outline: 2px solid var(--color-border-accent);
+        outline-offset: 2px;
       }
       .error { color: var(--color-text-danger); min-height: var(--text-line-height-sm); }
-      .field-error { color: var(--color-text-danger); font-size: 11px; min-height: 14px; }
+      .field-error { color: var(--color-text-danger); font-size: var(--text-size-xxs); min-height: 14px; }
       .back {
         align-self: flex-start;
         height: 28px;
@@ -217,7 +287,9 @@
       .back:hover { color: var(--color-text-primary); }
       .groups-label {
         color: var(--color-text-primary);
+        font-size: var(--text-size-xs);
         font-weight: var(--text-weight-semibold);
+        line-height: var(--text-line-height-sm);
       }
       .grow { flex: 1; }
     </style>
@@ -226,10 +298,10 @@
     <main>
       <header class="brand" aria-label="Foundry">
         <span class="brand-mark" aria-hidden="true">
-          <svg width="12" height="16" viewBox="0 0 12 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3.38355 11.3333C3.695 11.3333 3.94748 11.6318 3.94748 12V15.3333C3.94748 15.7015 3.695 16 3.38355 16H0.563926C0.252478 16 0 15.7015 0 15.3333V12C0 11.6318 0.252478 11.3333 0.563926 11.3333H3.38355Z" fill="black"/>
-            <path d="M7.54636 6C7.75995 6 7.95528 6.14265 8.05081 6.36849L9.17866 9.03516C9.36614 9.47842 9.09342 10 8.67421 10H0.563926C0.252478 10 0 9.70152 0 9.33333V6.66667C3.63315e-08 6.29848 0.252478 6 0.563926 6H7.54636Z" fill="black"/>
-            <path d="M9.82574 0C10.0281 8.58332e-05 10.215 0.128236 10.3153 0.335938L11.925 3.66927C12.1397 4.11371 11.8678 4.66667 11.4349 4.66667H0.563926C0.252478 4.66667 0 4.36819 0 4V0.666667C0 0.298477 0.252478 0 0.563926 0H9.82574Z" fill="black"/>
+          <svg width="28" height="28" viewBox="0 0 97 97" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="97" height="97" rx="20" fill="white"/>
+            <path d="M19.5892 30.8728C19.225 31.4938 19.2227 32.2626 19.583 32.8858L26.1438 44.2316C26.9013 45.5417 28.7832 45.5684 29.5775 44.2802L32.8794 38.9254C33.2436 38.3348 33.8879 37.9751 34.5818 37.9751H73.065C73.7916 37.9751 74.4611 37.5811 74.8137 36.9458L80.351 26.9707C81.0909 25.6376 80.127 24 78.6023 24H24.7656C24.056 24 23.3994 24.3761 23.0404 24.9882L19.5892 30.8728Z" fill-rule="evenodd" clip-rule="evenodd" fill="black"/>
+            <path d="M36.1592 46.4911C36.5119 45.8558 37.1813 45.4618 37.9079 45.4618H66.6887C68.2134 45.4618 69.1774 47.0994 68.4374 48.4325L63.1772 57.9085C62.8245 58.5437 62.1551 58.9378 61.4285 58.9378H46.5998C45.8732 58.9378 45.2038 59.3318 44.8511 59.9671L34.8793 77.9309C34.1271 79.2859 32.1862 79.3076 31.404 77.9696L25.4551 67.7939C25.0986 67.1841 25.0902 66.4314 25.4331 65.8138L36.1592 46.4911Z" fill-rule="evenodd" clip-rule="evenodd" fill="black"/>
           </svg>
         </span>
         <p class="brand-name">Foundry</p>
@@ -283,15 +355,15 @@
     <script>
       const PORT = 4317;
       const GROUPS = [
-        ["color", "Color", "Color ramps"],
-        ["type", "Typography", "Family, size, height, and weight"],
-        ["border", "Border", "Stroke widths"],
-        ["spacing", "Spacing", "Space scale"],
-        ["radius", "Radius", "Corner scale"],
-        ["shadow", "Shadow", "Shadow levels"],
-        ["motion", "Motion", "Durations and easings"],
-        ["blur", "Blur", "Blur radii"],
-        ["other", "Other", "Variables outside the usual groups"],
+        ["color", "Color"],
+        ["type", "Typography"],
+        ["border", "Border"],
+        ["spacing", "Spacing"],
+        ["radius", "Radius"],
+        ["shadow", "Shadow"],
+        ["motion", "Motion"],
+        ["blur", "Blur"],
+        ["other", "Other"],
       ];
 
       const errorNode = document.getElementById("error");
@@ -441,10 +513,7 @@
           name.textContent = system.name;
           text.appendChild(name);
           const meta = document.createElement("em");
-          const variables = allVariables(system).length;
-          const bits = [`${variables} variables`];
-          if (system.active) bits.push("open");
-          meta.textContent = bits.join(" · ");
+          meta.textContent = String(allVariables(system).length);
           label.append(input, text, meta);
           node.appendChild(label);
         });
@@ -466,7 +535,7 @@
         });
       }
 
-      function addCheck(parent, id, title, detail, countLabel) {
+      function addCheck(parent, id, title, countLabel) {
         const label = document.createElement("label");
         const input = document.createElement("input");
         input.type = "checkbox";
@@ -478,9 +547,7 @@
         const text = document.createElement("span");
         const name = document.createElement("strong");
         name.textContent = title;
-        const small = document.createElement("small");
-        small.textContent = detail;
-        text.append(name, small);
+        text.appendChild(name);
         const meta = document.createElement("em");
         meta.textContent = countLabel;
         label.append(input, text, meta);
@@ -504,10 +571,10 @@
           const id = groupId(variable);
           buckets.set(id, (buckets.get(id) || 0) + 1);
         });
-        GROUPS.forEach(([id, title, detail]) => {
+        GROUPS.forEach(([id, title]) => {
           const count = buckets.get(id) || 0;
           if (!count) return;
-          addCheck(groups, id, title, detail, String(count));
+          addCheck(groups, id, title, String(count));
         });
         const chosen = allVariables(system).filter((variable) => checks[groupId(variable)] === true).length;
         if (allVariables(system).length === 0) {
@@ -515,7 +582,7 @@
         } else if (chosen === 0) {
           hint.textContent = "Tick at least one foundation.";
         } else {
-          hint.textContent = `Create will write ${chosen} ${chosen === 1 ? "variable" : "variables"} into Primitives.`;
+          hint.textContent = `Create will write ${chosen} ${chosen === 1 ? "variable" : "variables"} into Core.`;
         }
         document.getElementById("create").disabled = chosen === 0;
       }
@@ -550,7 +617,7 @@
           if (!systems) throw new Error("Foundry did not return any design systems.");
           adoptLibrary(systems);
         } catch {
-          showError("Cannot reach Foundry. Open it with npm run dev, or paste JSON.");
+          showError("No systems found, or Foundry could not be reached. Create a system and make sure the app is running — or paste JSON.");
         } finally {
           button.disabled = false;
           button.textContent = "Read from Foundry";
@@ -597,7 +664,7 @@
             file: {
               source: "foundry",
               url: "https://foundry.jcmartinez.net",
-              sets: [{ id: system.id, name: "Primitives", variables }],
+              sets: [{ id: system.id, name: "Core", variables }],
             },
           },
         }, "*");

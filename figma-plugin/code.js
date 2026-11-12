@@ -83,7 +83,7 @@ async function importVariableSets(sets) {
   const usable = (sets || []).filter((set) => set && Array.isArray(set.variables) && set.variables.length > 0);
   if (usable.length === 0) return { created, updated, skipped };
 
-  const COLLECTION_NAME = "Primitives";
+  const COLLECTION_NAME = "Core";
   const collections = await figma.variables.getLocalVariableCollectionsAsync();
   const variables = [];
   for (const kind of ["COLOR", "FLOAT", "STRING"]) {

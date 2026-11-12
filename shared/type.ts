@@ -19,9 +19,6 @@ export const REM_PX = 16;
 const MIN_HEIGHT_REM = 0.5;
 const MAX_HEIGHT_REM = 3;
 
-const LARGER = ["lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl", "8xl", "9xl"];
-const SMALLER = ["sm", "xs", "2xs", "3xs", "4xs", "5xs"];
-
 export type TypeStep = {
   step: number;
   name: string;
@@ -65,10 +62,9 @@ function round3(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
-export function nameForStep(step: number): string {
-  if (step === 0) return "base";
-  if (step > 0) return LARGER[step - 1] ?? `step-${step}`;
-  return SMALLER[-step - 1] ?? `step${step}`;
+/** Place 0 is the smallest step → `100`, then `200`, … Base is whichever place holds step 0. */
+export function nameForStep(place: number): string {
+  return String((place + 1) * 100);
 }
 
 export function ratioValue(ratioId: TypeRatioId, customRatio: number): number {
@@ -83,6 +79,11 @@ export function sizeForStep(baseSize: number, ratio: number, step: number, whole
 
 export function heightForStep(baseHeight: number, ratio: number, step: number): number {
   return round3(baseHeight * ratio ** step);
+}
+
+/** Line-height is authored in rem; tokens always export as px for Figma. */
+export function heightPx(heightRem: number): number {
+  return round1(heightRem * REM_PX);
 }
 
 export function typeSteps(input: {
@@ -100,13 +101,15 @@ export function typeSteps(input: {
   const ratio = Math.round(clamp(input.ratio, 1.05, 2) * 1000) / 1000;
   const wholePixels = input.wholePixels === true;
   const steps: TypeStep[] = [];
+  let place = 0;
   for (let step = -below; step <= above; step += 1) {
     steps.push({
       step,
-      name: nameForStep(step),
+      name: nameForStep(place),
       size: sizeForStep(baseSize, ratio, step, wholePixels),
       height: heightForStep(baseHeight, ratio, step),
     });
+    place += 1;
   }
   return steps;
 }
@@ -138,7 +141,7 @@ export function createTypeCollection(name: string, id?: string): TypeCollection 
     customRatio: 1.25,
     stepsAbove: 4,
     stepsBelow: 1,
-    families: [{ id: crypto.randomUUID(), name: "Inter" }],
+    families: [{ id: crypto.randomUUID(), name: "Big Caslon" }],
     wholePixels: false,
   };
 }
@@ -172,7 +175,7 @@ function normalizeFamilies(raw: LegacyType): FontFamily[] {
       return [{ id: family.id || crypto.randomUUID(), name: fontFamilyOf(family.name) }];
     });
   }
-  const first = fontFamilyOf(raw.fontFamily) || "Inter";
+  const first = fontFamilyOf(raw.fontFamily) || "Big Caslon";
   const second = fontFamilyOf(raw.displayFamily);
   const families: FontFamily[] = [{ id: crypto.randomUUID(), name: first }];
   if (second && second !== first) families.push({ id: crypto.randomUUID(), name: second });
@@ -240,7 +243,7 @@ export function exportTypeLibrary(library: TypeLibrary): TypeExportFile {
     collections: library.collections.map((collection) => ({
       id: collection.id,
       name: collection.name,
-      fontFamily: collection.families.find((family) => family.name.trim())?.name.trim() || "Inter",
+      fontFamily: collection.families.find((family) => family.name.trim())?.name.trim() || "Big Caslon",
       fontStyle: "Regular",
       lineHeightPercent: 100,
       styles: [],
