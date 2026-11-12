@@ -103,12 +103,22 @@ if (!new TextDecoder().decode(nestedZip).includes("core/spacing.core.json")) {
   throw new Error("El ZIP no acepta rutas dentro de core/.");
 }
 
-const scale = typeSteps({ baseSize: 16, baseHeight: 1.5, ratio: 1.25, stepsAbove: 1, stepsBelow: 1 });
+const scale = typeSteps({
+  baseSize: 16,
+  heightAtBase: 1.5,
+  heightAtLargest: 1.1,
+  ratio: 1.25,
+  stepsAbove: 1,
+  stepsBelow: 1,
+});
 if (scale.map((step) => step.size).join(",") !== "12.8,16,20") {
   throw new Error(`La escala 16 × 1.25 no cuadra: ${scale.map((step) => step.size).join(",")}`);
 }
-if (scale.map((step) => step.height).join(",") !== "1.2,1.5,1.875") {
-  throw new Error(`La altura 1.5 rem × 1.25 no cuadra: ${scale.map((step) => step.height).join(",")}`);
+if (scale.map((step) => step.lineHeight).join(",") !== "1.9,1.5,1.1") {
+  throw new Error(`Los coeficientes 1.5→1.1 no cuadran: ${scale.map((step) => step.lineHeight).join(",")}`);
+}
+if (scale.map((step) => step.height).join(",") !== "24.3,24,22") {
+  throw new Error(`La altura size × lh no cuadra: ${scale.map((step) => step.height).join(",")}`);
 }
 if (scale.map((step) => step.name).join(",") !== "100,200,300") {
   throw new Error(`Los nombres de la escala no cuadran: ${scale.map((step) => step.name).join(",")}`);
@@ -116,17 +126,83 @@ if (scale.map((step) => step.name).join(",") !== "100,200,300") {
 if (sizeForStep(16, 1.2, -1) !== 13.3) {
   throw new Error(`16 / 1.2 debería redondear a 13.3, fue ${sizeForStep(16, 1.2, -1)}`);
 }
-const whole = typeSteps({ baseSize: 16, baseHeight: 1.5, ratio: 1.2, stepsAbove: 1, stepsBelow: 1, wholePixels: true });
+const whole = typeSteps({
+  baseSize: 16,
+  heightAtBase: 1.5,
+  heightAtLargest: 1.1,
+  ratio: 1.2,
+  stepsAbove: 1,
+  stepsBelow: 1,
+  wholePixels: true,
+});
 if (whole.map((step) => step.size).join(",") !== "13,16,19") {
   throw new Error(`Los píxeles enteros no cuadran: ${whole.map((step) => step.size).join(",")}`);
 }
-if (whole.map((step) => step.height).join(",") !== "1.25,1.5,1.8") {
-  throw new Error(`La altura en rem no debe redondearse a píxeles: ${whole.map((step) => step.height).join(",")}`);
+if (whole.map((step) => step.height).join(",") !== "24.7,24,20.9") {
+  throw new Error(`Whole pixels no debe redondear la altura: ${whole.map((step) => step.height).join(",")}`);
+}
+const acceptance = typeSteps({
+  baseSize: 16,
+  heightAtBase: 1.5,
+  heightAtLargest: 1.1,
+  ratio: 1.414,
+  stepsAbove: 5,
+  stepsBelow: 1,
+  wholePixels: true,
+});
+if ([...acceptance].reverse().map((step) => step.size).join(",") !== "90,64,45,32,23,16,11") {
+  throw new Error(`La escala de aceptación no cuadra: ${[...acceptance].reverse().map((step) => step.size).join(",")}`);
+}
+if (
+  [...acceptance]
+    .reverse()
+    .map((step) => step.lineHeight)
+    .join(",") !== "1.1,1.18,1.26,1.34,1.42,1.5,1.58"
+) {
+  throw new Error(
+    `Los coeficientes de aceptación no cuadran: ${[...acceptance].reverse().map((step) => step.lineHeight).join(",")}`,
+  );
+}
+if (
+  [...acceptance]
+    .reverse()
+    .map((step) => step.height)
+    .join(",") !== "99,75.5,56.7,42.9,32.7,24,17.4"
+) {
+  throw new Error(
+    `Las alturas de aceptación no cuadran: ${[...acceptance].reverse().map((step) => step.height).join(",")}`,
+  );
+}
+const deeper = typeSteps({
+  baseSize: 16,
+  heightAtBase: 1.5,
+  heightAtLargest: 1.1,
+  ratio: 1.414,
+  stepsAbove: 5,
+  stepsBelow: 2,
+  wholePixels: true,
+});
+if (deeper[0]?.lineHeight !== 1.66) {
+  throw new Error(`El segundo paso bajo la base debe usar 1.66 sin clampeo: ${deeper[0]?.lineHeight}`);
+}
+const flat = typeSteps({
+  baseSize: 16,
+  heightAtBase: 1.5,
+  heightAtLargest: 1.1,
+  ratio: 1.25,
+  stepsAbove: 0,
+  stepsBelow: 1,
+});
+if (flat.some((step) => step.lineHeight !== 1.5)) {
+  throw new Error("Con stepsAbove 0, todos los pasos deben usar heightAtBase.");
 }
 const sample = createTypeCollection("Texto", "type-check");
 const sampleSteps = stepsForCollection(sample);
 if (sampleSteps.length !== 6 || sampleSteps[0]?.step !== -1 || !sampleSteps.some((step) => step.step === 0 && step.size === 16)) {
   throw new Error("La colección de ejemplo no tiene la base y un paso por debajo.");
+}
+if (sample.families.length !== 3) {
+  throw new Error("La colección de ejemplo debe exponer siempre 3 familias.");
 }
 const again = stepsForCollection({ ...sample, stepsAbove: 2, stepsBelow: 2 });
 if (again.length !== 5 || again[0]?.step !== -2) {
@@ -140,15 +216,18 @@ const migrated = normalizeTypeCollection({
   count: 6,
   stepsBelow: 1,
 });
-if (migrated.families.map((family) => family.name).join(",") !== "Inter,Georgia") {
+if (migrated.families.map((family) => family.name).filter(Boolean).join(",") !== "Inter,Georgia") {
   throw new Error("La migración no ha separado la familia base y la de display.");
 }
-if (migrated.baseHeight !== 1.5 || migrated.stepsAbove !== 4) {
-  throw new Error("La migración no ha calculado la altura base ni los pasos por encima.");
+if (migrated.families.length !== 3) {
+  throw new Error("La migración debe rellenar siempre 3 slots de familia.");
+}
+if (migrated.heightAtBase !== 1.5 || migrated.heightAtLargest !== 1.1 || migrated.stepsAbove !== 4) {
+  throw new Error("La migración no ha calculado las anclas de altura ni los pasos por encima.");
 }
 const fromPixels = normalizeTypeCollection({ baseSize: 16, baseHeight: 19.2, stepsAbove: 1, stepsBelow: 1 });
-if (fromPixels.baseHeight !== 1.2) {
-  throw new Error(`Una altura guardada en píxeles no ha pasado a rem: ${fromPixels.baseHeight}`);
+if (fromPixels.heightAtBase !== 1.2) {
+  throw new Error(`Una altura legacy en px no ha pasado a coeficiente unitless: ${fromPixels.heightAtBase}`);
 }
 if (figmaTextStyleName("Marca", "cuerpo") !== "Marca/cuerpo") {
   throw new Error("El nombre de estilo de Figma no usa colección/estilo.");
@@ -618,13 +697,17 @@ const typed = {
   type: {
     ...project.systems[0]!.type,
     baseSize: 16,
-    baseHeight: 1.5,
+    heightAtBase: 1.5,
+    heightAtLargest: 1.1,
+    spacingAtBase: 0,
+    spacingAtLargest: 0,
     ratioId: "major-third" as const,
     stepsAbove: 1,
     stepsBelow: 1,
     families: [
       { id: "f1", name: "Inter" },
       { id: "f2", name: "Georgia" },
+      { id: "f3", name: "" },
     ],
   },
 };
@@ -632,6 +715,9 @@ const fontVariables = exportSystem(typed).sets[0]?.variables ?? [];
 const fontName = (name: string) => fontVariables.find((variable) => variable.name === name);
 if (fontName("font/family/font-1")?.text !== "Inter" || fontName("font/family/font-2")?.text !== "Georgia") {
   throw new Error("La tipografía no exporta las familias como font-1 y font-2.");
+}
+if (fontName("font/family/font-3")) {
+  throw new Error("Una familia vacía no debe generar token.");
 }
 if (fontName("font/weight/01")?.number !== 200 || fontName("font/weight/03")?.number !== 400 || fontName("font/weight/08")?.number !== 900) {
   throw new Error("Los pesos no se generan como font/weight/01 = 200 hasta 08 = 900.");
@@ -642,14 +728,45 @@ if (fontVariables.some((variable) => variable.name === "font/weight/regular" || 
 if (fontName("font/size/200")?.number !== 16 || fontName("font/size/300")?.number !== 20 || fontName("font/height/200")?.css !== "24px") {
   throw new Error("Cada paso no tiene size y height en px dentro de font.");
 }
-if (fontName("font/height/100")?.number !== 19.2 || fontName("font/height/100")?.css !== "19.2px") {
-  throw new Error("La altura en rem no se ha convertido a px al exportar.");
+if (fontName("font/height/100")?.number !== 24.3 || fontName("font/height/100")?.css !== "24.3px") {
+  throw new Error("La altura no se exporta como size × coeficiente en px.");
+}
+if (fontName("font/height/300")?.number !== 22 || fontName("font/height/300")?.css !== "22px") {
+  throw new Error("El paso más grande no usa heightAtLargest.");
+}
+if (fontName("font/spacing")?.number !== 0 || fontName("font/spacing")?.css !== "0px") {
+  throw new Error("Con anclas de spacing en 0 debe exportarse un solo font/spacing = 0px.");
+}
+if (fontVariables.some((variable) => variable.name.startsWith("font/spacing/"))) {
+  throw new Error("Con anclas de spacing en 0 no deben generarse font/spacing/NNN.");
 }
 if (fontVariables.some((variable) => variable.name.startsWith("font/height/") && variable.css.endsWith("rem"))) {
   throw new Error("font/height no debe exportarse en rem.");
 }
 if (fontVariables.some((variable) => /font\/(size|height)\/(sm|base|lg|xl)/.test(variable.name))) {
   throw new Error("font/size y font/height siguen usando nombres semánticos.");
+}
+const spacedType = exportSystem({
+  ...typed,
+  type: { ...typed.type, spacingAtBase: 0, spacingAtLargest: -0.04 },
+}).sets[0]?.variables ?? [];
+const spacedName = (name: string) => spacedType.find((variable) => variable.name === name);
+if (spacedName("font/spacing")) {
+  throw new Error("Con interpolación de spacing no debe existir el token plano font/spacing.");
+}
+// sizes 12.8 / 16 / 20 · em 0.04 / 0 / -0.04 → px 0.5 / 0 / -0.8
+if (spacedName("font/spacing/200")?.number !== 0 || spacedName("font/spacing/300")?.number !== -0.8) {
+  throw new Error("font/spacing debe exportarse en px (size × em) interpolando por paso.");
+}
+if (spacedName("font/spacing/100")?.number !== 0.5 || spacedName("font/spacing/100")?.css !== "0.5px") {
+  throw new Error("El paso bajo la base debe seguir la recta de letter-spacing en px.");
+}
+if (spacedType.some((variable) => variable.name.startsWith("font/spacing") && variable.css.endsWith("em"))) {
+  throw new Error("font/spacing no debe exportarse en em.");
+}
+const capped = normalizeTypeCollection({ stepsAbove: 8, stepsBelow: 8 });
+if (capped.stepsAbove !== 6 || capped.stepsBelow !== 3) {
+  throw new Error(`Los máximos de pasos deben ser 6 arriba y 3 abajo: ${capped.stepsAbove}/${capped.stepsBelow}`);
 }
 if (
   fontVariables.some(

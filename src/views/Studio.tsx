@@ -62,22 +62,6 @@ export function Studio({ colors, preview, onChange, onToast }: Props) {
             ]}
             onChange={setMode}
           />
-          {mode === "ramps" && colors.length > 0 ? (
-            <div className="mode-bar">
-              <ContrastFilter
-                test={contrastTest}
-                ground={contrastGround}
-                customHex={contrastCustomHex}
-                onTest={setContrastTest}
-                onGround={setContrastGround}
-                onCustomHex={setContrastCustomHex}
-              />
-              <button type="button" className="add" onClick={addRamp}>
-                <Plus size={14} />
-                New ramp
-              </button>
-            </div>
-          ) : null}
         </div>
 
         {mode === "ramps" ? (
@@ -95,6 +79,20 @@ export function Studio({ colors, preview, onChange, onToast }: Props) {
               <p className="hint ramp-hint">
                 Every ramp is built in OKLCH: the hue stays and lightness runs from the light step to the dark step.
               </p>
+              <div className="mode-bar">
+                <ContrastFilter
+                  test={contrastTest}
+                  ground={contrastGround}
+                  customHex={contrastCustomHex}
+                  onTest={setContrastTest}
+                  onGround={setContrastGround}
+                  onCustomHex={setContrastCustomHex}
+                />
+                <button type="button" className="add" onClick={addRamp}>
+                  <Plus size={14} />
+                  New ramp
+                </button>
+              </div>
               <div className="ramp-list">
                 {colors.map((item, at) => (
                   <RampCard
@@ -355,9 +353,9 @@ function ContrastFilter({
         <div className="segment" role="group" aria-label="Contrast test">
           {(
             [
+              ["none", "None"],
               ["wcag", "WCAG"],
               ["apca", "APCA"],
-              ["none", "None"],
             ] as const
           ).map(([value, label]) => (
             <button

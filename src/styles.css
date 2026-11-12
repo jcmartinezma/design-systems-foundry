@@ -437,11 +437,11 @@ button.download,
   cursor: default;
 }
 
-.ramp-list { display: flex; flex-direction: column; gap: var(--spacing-sm); padding: var(--spacing-sm); }
+.ramp-list { display: flex; flex-direction: column; gap: var(--spacing-sm); padding: var(--spacing-sm) var(--spacing-lg); }
 .ramp {
   border-bottom: 1px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-xs);
-  padding: var(--spacing-sm);
+  padding: 0 0 var(--spacing-sm) 0;
 }
 .ramp-head { display: flex; align-items: center; gap: var(--spacing-xs); justify-content: space-between; }
 .name { flex: 1; max-width: 200px; font-size: var(--text-size-xs); font-weight: var(--text-weight-semibold); }
@@ -457,6 +457,9 @@ button.download,
 .ramp-actions .text:hover { color: var(--text); background: var(--hover); }
 .segment {
   display: flex;
+  align-items: stretch;
+  box-sizing: border-box;
+  height: var(--spacing-lg);
   padding: 2px;
   border-radius: var(--border-radius-xs);
   background: var(--segment);
@@ -466,7 +469,7 @@ button.download,
   border: 0;
   background: transparent;
   color: var(--muted);
-  height: var(--spacing-md);
+  height: 100%;
   padding: 0 var(--spacing-xs);
 }
 .segment button.active { background: var(--segment-on); color: var(--text); }
@@ -711,14 +714,21 @@ input[type="range"]::-moz-range-thumb {
   font-variant-numeric: tabular-nums;
 }
 input[type="color"] {
-  width: 42px;
+  box-sizing: border-box;
+  width: var(--spacing-lg);
   height: var(--spacing-lg);
+  flex: none;
   padding: 0;
   border: 0;
   background: transparent;
+  cursor: pointer;
 }
 input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
 input[type="color"]::-webkit-color-swatch {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--border-radius-xs);
+}
+input[type="color"]::-moz-color-swatch {
   border: 1px solid var(--line-strong);
   border-radius: var(--border-radius-xs);
 }
@@ -1012,7 +1022,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .type-list { display: flex; flex-direction: column; gap: var(--spacing-xs); }
 .type-entry {
   display: grid;
-  grid-template-columns: minmax(140px, 180px) minmax(0, 1fr) 28px;
+  grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
   gap: var(--spacing-xs);
   align-items: center;
 }
@@ -1032,7 +1042,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   overflow-wrap: anywhere;
 }
 .type-controls span { color: var(--muted); font-size: var(--text-size-xxs); }
-.type-controls input:not([type="checkbox"]):not([type="range"]),
+.type-controls input:not([type="checkbox"]):not([type="range"]):not([type="color"]),
 .type-controls select {
   height: var(--spacing-lg);
   background: var(--control);
@@ -2820,28 +2830,26 @@ button.download:disabled {
 .inspector-list span, .inspector-list strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .inspector-list span { color: var(--faint); font-size: var(--text-size-xxs); }
 
-.mode-tabs, .ramp-hint, .zone { padding-left: var(--spacing-sm); padding-right: var(--spacing-sm); }
+.mode-tabs, .ramp-hint, .mode-bar, .zone { padding-left: var(--spacing-sm); padding-right: var(--spacing-sm); }
 .mode-tabs {
   position: sticky;
   top: 0;
   z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--spacing-xs);
   padding-top: var(--spacing-sm);
   padding-bottom: var(--spacing-xs);
   background: var(--bg);
 }
 .contrast-filter { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--spacing-sm) var(--spacing-sm); }
-.contrast-field { display: flex; flex-direction: column; gap: var(--spacing-xs); }
-.contrast-field > span, .contrast-filter .picker span { color: var(--muted); font-size: var(--text-size-xxs); }
+.contrast-field { display: flex; flex-direction: column; align-items: flex-start; gap: var(--spacing-xs); }
+.contrast-field > span, .contrast-filter .picker span { color: var(--muted); font-size: var(--text-size-xxs); white-space: nowrap; }
 .mode-bar {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--spacing-sm) var(--spacing-sm);
   width: 100%;
+  box-sizing: border-box;
+  margin-bottom: var(--spacing-sm);
 }
 .mode-bar > .add { margin: 0; flex-shrink: 0; }
 .ramp-hint { margin-top: var(--spacing-xs); }

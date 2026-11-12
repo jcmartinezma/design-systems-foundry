@@ -3,7 +3,7 @@ import { blurDtcg } from "./blur";
 import { borderDtcg } from "./border";
 import { radiusDtcg } from "./radius";
 import { dimensionToken, spacingDtcg } from "./spacing";
-import { familyTokenName, fontWeightSteps, heightPx, stepsForCollection } from "./type";
+import { familyTokenName, fontWeightSteps, hasLetterSpacingScale, stepsForCollection } from "./type";
 import type {
   DesignSystem,
   ExportFoundationId,
@@ -74,6 +74,9 @@ export function typeDtcg(type: TypeCollection): {
     family: Record<string, { $type: "fontFamily"; $value: string; $description?: string }>;
     size: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }>;
     height: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }>;
+    spacing:
+      | (ReturnType<typeof dimensionToken> & { $description?: string })
+      | Record<string, ReturnType<typeof dimensionToken> & { $description?: string }>;
     weight: Record<string, { $type: "fontWeight"; $value: number; $description?: string }>;
   };
 } {
@@ -91,17 +94,33 @@ export function typeDtcg(type: TypeCollection): {
 
   const size: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }> = {};
   const height: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }> = {};
-  for (const step of stepsForCollection(type)) {
+  const steps = stepsForCollection(type);
+  for (const step of steps) {
     const name = dtcgName(step.name, "step");
-    const heightValue = heightPx(step.height);
     size[name] = {
       ...dimensionToken(step.size),
       $description: `${step.size} px · step ${step.step}`,
     };
     height[name] = {
-      ...dimensionToken(heightValue),
-      $description: `${heightValue} px · step ${step.step}`,
+      ...dimensionToken(step.height),
+      $description: `${step.height} px · step ${step.step}`,
     };
+  }
+
+  let spacing:
+    | (ReturnType<typeof dimensionToken> & { $description?: string })
+    | Record<string, ReturnType<typeof dimensionToken> & { $description?: string }>;
+  if (hasLetterSpacingScale(type.spacingAtBase, type.spacingAtLargest)) {
+    const scaled: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }> = {};
+    for (const step of steps) {
+      scaled[dtcgName(step.name, "step")] = {
+        ...dimensionToken(step.spacing),
+        $description: `${step.spacing} px · step ${step.step}`,
+      };
+    }
+    spacing = scaled;
+  } else {
+    spacing = { ...dimensionToken(0), $description: "0 px." };
   }
 
   const weight: Record<string, { $type: "fontWeight"; $value: number; $description?: string }> = {};
@@ -113,7 +132,7 @@ export function typeDtcg(type: TypeCollection): {
     };
   }
 
-  return { font: { family, size, height, weight } };
+  return { font: { family, size, height, spacing, weight } };
 }
 
 export function shadowDtcg(scale: ShadowScale): {

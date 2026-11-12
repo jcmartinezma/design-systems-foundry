@@ -8,7 +8,7 @@ type Props = {
 };
 
 export function AboutView(props: Props) {
-  const [version, setVersion] = useState("0.2.2");
+  const [version, setVersion] = useState("0.2.3");
 
   useEffect(() => {
     if (!enablePublish) return;

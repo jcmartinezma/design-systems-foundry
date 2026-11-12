@@ -5,7 +5,13 @@ import { shadowCss } from "./shadow";
 import { figmaVariableName, slug } from "./project";
 import { radiusDimensions } from "./radius";
 import { formatSpacingPx, formatSpacingRem } from "./spacing";
-import { exportTypeScale, familyTokenName, fontWeightSteps, heightPx, stepsForCollection } from "./type";
+import {
+  exportTypeScale,
+  familyTokenName,
+  fontWeightSteps,
+  hasLetterSpacingScale,
+  stepsForCollection,
+} from "./type";
 import type {
   DesignSystem,
   ExportFile,
@@ -85,11 +91,20 @@ function typeVariables(type: TypeCollection): ExportVariable[] {
     text(`font/family/${familyTokenName(index)}`, `Font family ${index + 1}.`, value);
   });
 
-  for (const step of stepsForCollection(type)) {
+  const steps = stepsForCollection(type);
+  for (const step of steps) {
     const name = segment(step.name, "step");
-    const height = heightPx(step.height);
     number(`font/size/${name}`, `${step.size} px · step ${step.step}`, step.size, `${step.size}px`);
-    number(`font/height/${name}`, `${height} px · step ${step.step}`, height, `${height}px`);
+    number(`font/height/${name}`, `${step.height} px · step ${step.step}`, step.height, `${step.height}px`);
+  }
+
+  if (hasLetterSpacingScale(type.spacingAtBase, type.spacingAtLargest)) {
+    for (const step of steps) {
+      const name = segment(step.name, "step");
+      number(`font/spacing/${name}`, `${step.spacing} px · step ${step.step}`, step.spacing, `${step.spacing}px`);
+    }
+  } else {
+    number("font/spacing", "0 px.", 0, "0px");
   }
 
   for (const weight of fontWeightSteps()) {
