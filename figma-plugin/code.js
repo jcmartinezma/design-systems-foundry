@@ -8,6 +8,11 @@ figma.ui.onmessage = async (message) => {
     return;
   }
 
+  if (message.type === "open-url" && typeof message.url === "string") {
+    figma.openExternal(message.url);
+    return;
+  }
+
   if (message.type === "import-type" && message.file && Array.isArray(message.file.collections)) {
     try {
       const selected = new Set(message.collectionIds || []);

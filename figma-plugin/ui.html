@@ -60,35 +60,96 @@
       main {
         height: 100%;
         padding: var(--spacing-md);
+        padding-bottom: var(--spacing-xs);
         display: flex;
         flex-direction: column;
         gap: var(--spacing-sm);
-        overflow: auto;
+        overflow: hidden;
+        min-height: 0;
       }
       .brand {
+        display: grid;
+        grid-template-columns: 32px 1fr 32px;
+        align-items: center;
+        padding-bottom: var(--spacing-2xs);
+        flex-shrink: 0;
+      }
+      .brand-center {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: var(--spacing-xs);
-        padding-bottom: var(--spacing-2xs);
+        grid-column: 2;
       }
+      .about-open {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-color: transparent;
+        color: var(--color-text-secondary);
+        display: grid;
+        place-content: center;
+        grid-column: 3;
+        justify-self: end;
+      }
+      .about-open:hover,
+      .about-open[aria-current="page"] {
+        color: var(--color-text-primary);
+      }
+      .about-open svg { display: block; }
       .brand-mark {
-        width: 28px;
-        height: 28px;
+        width: 40px;
+        height: 40px;
         flex-shrink: 0;
         display: block;
         overflow: hidden;
-        border-radius: var(--border-radius-xs);
       }
-      .brand-mark svg { display: block; width: 28px; height: 28px; }
-      .brand-name {
+      .brand-mark svg { display: block; width: 40px; height: 40px; }
+      .about-page {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+      }
+      .about-page .eyebrow {
         margin: 0;
-        font-family: var(--text-style-display);
+        color: var(--color-text-tertiary);
+        font-size: var(--text-size-xxs);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .about-page h1 {
         font-size: var(--text-size-sm);
         font-weight: var(--text-weight-bold);
         line-height: var(--text-line-height-md);
-        letter-spacing: var(--text-letter-spacing-normal);
       }
+      .about-page .lede {
+        color: var(--color-text-secondary);
+        font-size: var(--text-size-xs);
+        line-height: var(--text-line-height-md);
+      }
+      .about-facts {
+        margin: var(--spacing-sm) 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+      }
+      .about-facts div { display: grid; gap: 2px; }
+      .about-facts dt {
+        color: var(--color-text-tertiary);
+        font-size: var(--text-size-xxs);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .about-facts dd { margin: 0; color: var(--color-text-primary); }
+      .about-facts a {
+        color: var(--color-text-primary);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      .about-facts a:hover { color: var(--color-surface-tertiary-inverse); }
       .step-meta {
         margin: 0;
         color: var(--color-text-tertiary);
@@ -135,12 +196,13 @@
       button:disabled { opacity: 0.55; cursor: default; }
       button:focus-visible, textarea:focus-visible, input:focus-visible {
         outline: 2px solid var(--color-border-accent);
-        outline-offset: 1px;
+        outline-offset: -2px;
       }
       textarea {
-        min-height: 96px;
+        min-height: 0;
+        flex: 1;
         padding: var(--spacing-xs);
-        resize: vertical;
+        resize: none;
         background: var(--color-bg-secondary);
         border-color: var(--color-border-secondary);
       }
@@ -165,25 +227,57 @@
         height: 1px;
         background: var(--color-border-secondary);
       }
-      .json-box { display: flex; flex-direction: column; gap: var(--spacing-xs); }
-      .panel > button.primary, .json-box > button.primary { width: 100%; }
+      .json-box {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        flex: 1;
+        min-height: 0;
+      }
+      .panel > button { flex-shrink: 0; }
+      .panel > button.primary, .json-box > button.primary, .actions > button.primary { width: 100%; }
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        flex-shrink: 0;
+      }
+      .actions > button.primary { flex: 1; min-width: 0; }
+      .actions > button.secondary {
+        flex: 0 0 auto;
+        min-width: 72px;
+        background: var(--color-bg-secondary);
+        color: var(--color-text-primary);
+        border-color: transparent;
+      }
+      .actions > button.secondary:only-child {
+        flex: 1;
+        width: 100%;
+      }
+      .actions > button.secondary:hover {
+        background: var(--color-bg-tertiary);
+      }
       .panel {
         display: none;
         flex-direction: column;
         gap: var(--spacing-sm);
         flex: 1;
+        min-height: 0;
+        overflow: hidden;
       }
       .panel.active { display: flex; }
       .panel-head {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-2xs);
+        flex-shrink: 0;
       }
       .list {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-2xs);
-        max-height: 280px;
+        flex: 1;
+        min-height: 0;
         overflow: auto;
         background: transparent;
       }
@@ -273,39 +367,100 @@
       input[type="checkbox"]:focus-visible,
       input[type="radio"]:focus-visible {
         outline: 2px solid var(--color-border-accent);
-        outline-offset: 2px;
+        outline-offset: -2px;
       }
-      .error { color: var(--color-text-danger); min-height: var(--text-line-height-sm); }
-      .field-error { color: var(--color-text-danger); font-size: var(--text-size-xxs); min-height: 14px; }
-      .back {
-        align-self: flex-start;
-        height: 28px;
-        padding: 0 var(--spacing-xs);
-        border-color: transparent;
-        color: var(--color-text-secondary);
+      .error {
+        color: var(--color-text-danger);
+        min-height: var(--text-line-height-sm);
+        flex-shrink: 0;
       }
-      .back:hover { color: var(--color-text-primary); }
+      .field-error {
+        color: var(--color-text-danger);
+        font-size: var(--text-size-xxs);
+        min-height: 14px;
+        flex-shrink: 0;
+      }
+      .groups-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-xs);
+        flex-shrink: 0;
+      }
       .groups-label {
+        margin: 0;
         color: var(--color-text-primary);
         font-size: var(--text-size-xs);
         font-weight: var(--text-weight-semibold);
         line-height: var(--text-line-height-sm);
       }
-      .grow { flex: 1; }
+      .groups-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2xs);
+      }
+      .groups-actions button {
+        height: 28px;
+        padding: 0 var(--spacing-xs);
+        border-color: transparent;
+        color: var(--color-text-secondary);
+      }
+      .groups-actions button:hover { color: var(--color-text-primary); }
+      .grow { flex: 1; min-height: 0; }
+      #create-hint, #selected-line, #systems-empty, #loaded-note { flex-shrink: 0; }
+      #search, .divider { flex-shrink: 0; }
     </style>
   </head>
   <body>
     <main>
       <header class="brand" aria-label="Foundry">
-        <span class="brand-mark" aria-hidden="true">
-          <svg width="28" height="28" viewBox="0 0 97 97" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="97" height="97" rx="20" fill="white"/>
-            <path d="M19.5892 30.8728C19.225 31.4938 19.2227 32.2626 19.583 32.8858L26.1438 44.2316C26.9013 45.5417 28.7832 45.5684 29.5775 44.2802L32.8794 38.9254C33.2436 38.3348 33.8879 37.9751 34.5818 37.9751H73.065C73.7916 37.9751 74.4611 37.5811 74.8137 36.9458L80.351 26.9707C81.0909 25.6376 80.127 24 78.6023 24H24.7656C24.056 24 23.3994 24.3761 23.0404 24.9882L19.5892 30.8728Z" fill-rule="evenodd" clip-rule="evenodd" fill="black"/>
-            <path d="M36.1592 46.4911C36.5119 45.8558 37.1813 45.4618 37.9079 45.4618H66.6887C68.2134 45.4618 69.1774 47.0994 68.4374 48.4325L63.1772 57.9085C62.8245 58.5437 62.1551 58.9378 61.4285 58.9378H46.5998C45.8732 58.9378 45.2038 59.3318 44.8511 59.9671L34.8793 77.9309C34.1271 79.2859 32.1862 79.3076 31.404 77.9696L25.4551 67.7939C25.0986 67.1841 25.0902 66.4314 25.4331 65.8138L36.1592 46.4911Z" fill-rule="evenodd" clip-rule="evenodd" fill="black"/>
+        <div class="brand-center">
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="40" height="40" viewBox="0 0 97 97" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3.30031 19.6786C2.90234 20.3757 2.89975 21.2317 3.29349 21.9313L13.6095 40.2593C14.464 41.7775 16.6315 41.8079 17.5279 40.3144L23.0937 31.0413C23.5042 30.3573 24.2415 29.9392 25.0369 29.9392H81.8752C82.7073 29.9392 83.4727 29.4819 83.8694 28.7476L92.7223 12.3633C93.5423 10.8458 92.4479 9 90.7281 9H10.711C9.89792 9 9.14697 9.43685 8.74268 10.1451L3.30031 19.6786Z" fill-rule="evenodd" clip-rule="evenodd" fill="white"/>
+              <path d="M27.8735 42.3481C28.2702 41.6139 29.0356 41.1566 29.8677 41.1566H73.353C75.0727 41.1566 76.1671 43.0024 75.3472 44.5199L66.8983 60.1563C66.5016 60.8906 65.7363 61.3479 64.9042 61.3479H42.5442C41.7121 61.3479 40.9468 61.8052 40.55 62.5395L25.2755 90.8084C24.4277 92.3774 22.1933 92.402 21.3114 90.8522L11.8605 74.2442C11.471 73.5597 11.4618 72.7216 11.8362 72.0286L27.8735 42.3481Z" fill-rule="evenodd" clip-rule="evenodd" fill="white"/>
+            </svg>
+          </span>
+        </div>
+        <button class="about-open" id="about-open" type="button" title="About" aria-label="About">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.75"/>
+            <path d="M12 11v5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+            <circle cx="12" cy="8" r="1" fill="currentColor"/>
           </svg>
-        </span>
-        <p class="brand-name">Foundry</p>
+        </button>
       </header>
+
+      <section id="step-about" class="panel">
+        <div class="about-page">
+          <p class="eyebrow">About</p>
+          <h1>Foundry</h1>
+          <p class="lede">A local tool for building a design system — color, type, border, spacing, radius, shadow, motion, and blur — and taking it to Figma, CSS, or JSON.</p>
+          <dl class="about-facts">
+            <div>
+              <dt>Version</dt>
+              <dd id="about-version">0.2.3</dd>
+            </div>
+            <div>
+              <dt>Author</dt>
+              <dd>jcmartinezma</dd>
+            </div>
+            <div>
+              <dt>GitHub repository</dt>
+              <dd>
+                <a id="about-github" href="https://github.com/jcmartinezma/design-systems-foundry">github.com/jcmartinezma/design-systems-foundry</a>
+              </dd>
+            </div>
+            <div>
+              <dt>License</dt>
+              <dd>MIT License</dd>
+            </div>
+          </dl>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="back-about" type="button">Back</button>
+        </div>
+      </section>
 
       <section id="step-read" class="panel active">
         <div class="panel-head">
@@ -325,7 +480,6 @@
       </section>
 
       <section id="step-system" class="panel">
-        <button class="back" id="back-system" type="button">← Back</button>
         <div class="panel-head">
           <p class="step-meta">Step 2 of 3</p>
           <h1>System</h1>
@@ -335,20 +489,31 @@
         <p id="selected-line"></p>
         <p id="systems-empty" hidden>No system matches that name.</p>
         <div id="systems" class="list grow" role="radiogroup" aria-label="Design systems"></div>
-        <button class="primary" id="to-create" type="button" disabled>Continue</button>
+        <div class="actions">
+          <button class="secondary" id="back-system" type="button">Back</button>
+          <button class="primary" id="to-create" type="button" disabled>Continue</button>
+        </div>
       </section>
 
       <section id="step-create" class="panel">
-        <button class="back" id="back-create" type="button">← Back</button>
         <div class="panel-head">
           <p class="step-meta">Step 3 of 3</p>
           <h1 id="create-title">Variables</h1>
           <p>Select the tokens you want to import to Figma.</p>
         </div>
-        <p class="groups-label" id="groups-label">Foundations</p>
+        <div class="groups-bar">
+          <p class="groups-label" id="groups-label">Foundations</p>
+          <div class="groups-actions">
+            <button type="button" id="select-all" aria-label="Select all foundations">Select all</button>
+            <button type="button" id="deselect-all" aria-label="Deselect all foundations">Deselect all</button>
+          </div>
+        </div>
         <div id="groups" class="list grow" role="group" aria-labelledby="groups-label"></div>
         <p id="create-hint"></p>
-        <button class="primary" id="create" type="button" disabled>Create variables</button>
+        <div class="actions">
+          <button class="secondary" id="back-create" type="button">Back</button>
+          <button class="primary" id="create" type="button" disabled>Create variables</button>
+        </div>
       </section>
       <p class="error" id="error"></p>
     </main>
@@ -370,6 +535,7 @@
       const jsonError = document.getElementById("json-error");
       const pasteButton = document.getElementById("paste-continue");
       let step = 1;
+      let stepBeforeAbout = 1;
       let library = [];
       let selectedId = "";
       let checksFor = "";
@@ -377,6 +543,12 @@
 
       function showError(message) {
         errorNode.textContent = message || "";
+      }
+
+      function setAboutOpen(open) {
+        const button = document.getElementById("about-open");
+        if (open) button.setAttribute("aria-current", "page");
+        else button.removeAttribute("aria-current");
       }
 
       function groupId(variable) {
@@ -402,13 +574,24 @@
 
       function showStep(next) {
         step = next;
+        document.getElementById("step-about").classList.toggle("active", next === 0);
         document.getElementById("step-read").classList.toggle("active", next === 1);
         document.getElementById("step-system").classList.toggle("active", next === 2);
         document.getElementById("step-create").classList.toggle("active", next === 3);
+        setAboutOpen(next === 0);
         showError("");
         if (next === 1) renderRead();
         if (next === 2) renderSystems();
         if (next === 3) renderCreate();
+      }
+
+      function showAbout() {
+        if (step === 0) {
+          showStep(stepBeforeAbout || 1);
+          return;
+        }
+        stepBeforeAbout = step;
+        showStep(0);
       }
 
       function renderRead() {
@@ -554,14 +737,34 @@
         parent.appendChild(label);
       }
 
+      function availableGroupIds(system) {
+        const present = new Set();
+        allVariables(system).forEach((variable) => present.add(groupId(variable)));
+        return GROUPS.map(([id]) => id).filter((id) => present.has(id));
+      }
+
+      function setAllChecks(selected) {
+        const system = selectedSystem();
+        if (!system) return;
+        bindSystem(system);
+        availableGroupIds(system).forEach((id) => {
+          checks[id] = selected;
+        });
+        renderCreate();
+      }
+
       function renderCreate() {
         const system = selectedSystem();
         const groups = document.getElementById("groups");
         const hint = document.getElementById("create-hint");
+        const selectAll = document.getElementById("select-all");
+        const deselectAll = document.getElementById("deselect-all");
         groups.innerHTML = "";
         if (!system) {
           hint.textContent = "Choose a design system first.";
           document.getElementById("create").disabled = true;
+          selectAll.disabled = true;
+          deselectAll.disabled = true;
           return;
         }
         bindSystem(system);
@@ -571,12 +774,18 @@
           const id = groupId(variable);
           buckets.set(id, (buckets.get(id) || 0) + 1);
         });
+        const groupIds = [];
         GROUPS.forEach(([id, title]) => {
           const count = buckets.get(id) || 0;
           if (!count) return;
+          groupIds.push(id);
           addCheck(groups, id, title, String(count));
         });
         const chosen = allVariables(system).filter((variable) => checks[groupId(variable)] === true).length;
+        const allSelected = groupIds.length > 0 && groupIds.every((id) => checks[id] === true);
+        const noneSelected = groupIds.every((id) => checks[id] !== true);
+        selectAll.disabled = groupIds.length === 0 || allSelected;
+        deselectAll.disabled = groupIds.length === 0 || noneSelected;
         if (allVariables(system).length === 0) {
           hint.textContent = "This system has no variables to create.";
         } else if (chosen === 0) {
@@ -587,10 +796,23 @@
         document.getElementById("create").disabled = chosen === 0;
       }
 
+      document.getElementById("about-open").onclick = () => showAbout();
+      document.getElementById("back-about").onclick = () => showStep(stepBeforeAbout || 1);
+      document.getElementById("about-github").onclick = (event) => {
+        event.preventDefault();
+        parent.postMessage({
+          pluginMessage: {
+            type: "open-url",
+            url: "https://github.com/jcmartinezma/design-systems-foundry",
+          },
+        }, "*");
+      };
       document.getElementById("back-system").onclick = () => showStep(1);
       document.getElementById("back-create").onclick = () => showStep(2);
       document.getElementById("resume").onclick = () => showStep(2);
       document.getElementById("search").oninput = () => renderSystems();
+      document.getElementById("select-all").onclick = () => setAllChecks(true);
+      document.getElementById("deselect-all").onclick = () => setAllChecks(false);
       document.getElementById("to-create").onclick = () => {
         if (!selectedSystem()) {
           showError("Choose one design system.");
