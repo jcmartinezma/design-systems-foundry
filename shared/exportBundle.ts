@@ -28,7 +28,7 @@ export function foundationZipEntries(system: DesignSystem, foundations?: readonl
   return [
     textEntry("foundry_tokens.json", JSON.stringify(file, null, 2)),
     textEntry("foundations.css", cssForExport(file)),
-    textEntry("core/tokens.core.json", JSON.stringify(tokensCoreDocument(system, picked), null, 2)),
+    textEntry("tokens.core.json", JSON.stringify(tokensCoreDocument(system, picked), null, 2)),
     ...coreIds.map((id) =>
       textEntry(foundationCorePath(id)!, JSON.stringify(coreDocumentFor(system, id), null, 2)),
     ),

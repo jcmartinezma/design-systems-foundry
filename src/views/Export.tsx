@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { tokensCoreDocument } from "../../shared/dtcg";
 import {
   EXPORT_FOUNDATION_IDS,
   cssForExport,
@@ -104,7 +105,8 @@ export function ExportView({ system, onChange, onToast, onExported }: Props) {
 
   async function copyJson() {
     if (!hasFoundations) return;
-    await navigator.clipboard.writeText(JSON.stringify(file, null, 2));
+    const doc = tokensCoreDocument(system, selected);
+    await navigator.clipboard.writeText(JSON.stringify(doc, null, 2));
     onExported();
     onToast("JSON copied");
   }
@@ -245,14 +247,15 @@ export function ExportView({ system, onChange, onToast, onExported }: Props) {
                   <p>
                     {enablePublish ? (
                       <>
-                        JSON matches <b>foundry_tokens.json</b>: Figma variables plus the editable system definition.
-                        Paste it in the plugin if Figma cannot reach this computer, or Import it to recreate a system.
-                        CSS is the custom properties for the web. Lists include only the foundations ticked on the left.
+                        JSON matches <b>tokens.core.json</b>: DTCG tokens for the foundations ticked on the left.
+                        CSS is the custom properties for the web. Use the ZIP’s <b>foundry_tokens.json</b> to import
+                        the system or paste into the Figma plugin.
                       </>
                     ) : (
                       <>
-                        JSON matches <b>foundry_tokens.json</b>: the token list and the full editable system definition.
-                        CSS is the custom properties for the web. Lists include only the foundations ticked on the left.
+                        JSON matches <b>tokens.core.json</b>: DTCG tokens for the foundations ticked on the left.
+                        CSS is the custom properties for the web. Use the ZIP’s <b>foundry_tokens.json</b> to import
+                        the system back into Foundry.
                       </>
                     )}
                   </p>

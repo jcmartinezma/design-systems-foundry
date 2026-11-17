@@ -329,7 +329,7 @@ function systemFromImportItem(item: unknown): DesignSystem {
   }
   if (isTokenExportShape(value)) {
     throw new Error(
-      "This export has no editable system definition. Re-export from Foundry (Copy JSON or Download ZIP) and import that file.",
+      "This export has no editable system definition. Re-export foundry_tokens.json from Foundry (Download ZIP) and import that file.",
     );
   }
   return adoptImported(normalizeSystem(value as DesignSystem));
@@ -345,7 +345,7 @@ export function systemsFromJson(input: unknown): DesignSystem[] {
       return [systemFromImportItem(value)];
     }
     throw new Error(
-      "This export has no editable system definition. Re-export from Foundry (Copy JSON or Download ZIP) and import that file.",
+      "This export has no editable system definition. Re-export foundry_tokens.json from Foundry (Download ZIP) and import that file.",
     );
   }
 

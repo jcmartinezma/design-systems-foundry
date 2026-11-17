@@ -250,7 +250,7 @@ export function coreDocumentFor(system: DesignSystem, id: CoreFoundationId): Dtc
   return withDtcgSchema(coreGroupsFor(system, id));
 }
 
-/** Merged DTCG file for the selected foundations (`core/tokens.core.json`). */
+/** Merged DTCG file for the selected foundations (`tokens.core.json` / Copy JSON). */
 export function tokensCoreDocument(system: DesignSystem, foundations?: readonly ExportFoundationId[]): DtcgDocument {
   const include = foundations === undefined ? null : new Set(foundations);
   const groups: Record<string, unknown> = {};

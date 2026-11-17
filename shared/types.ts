@@ -260,7 +260,7 @@ export type ExportFile = {
   id: string;
   name: string;
   sets: ExportSet[];
-  /** Full editable system. Present so the same JSON can recreate a DS in the app. */
+  /** Editable system for import. Scoped to the exported foundations when a selection is applied. */
   definition: DesignSystem;
 };
 

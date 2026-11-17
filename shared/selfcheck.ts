@@ -540,6 +540,30 @@ if (!withoutSpacing.sets[0]?.variables.some((variable) => variable.name.startsWi
 if ((exportSystem(project.systems[0]!, []).sets[0]?.variables.length ?? 1) !== 0) {
   throw new Error("Sin foundations la exportación no queda vacía.");
 }
+const partialDefinition = withoutSpacing.definition;
+if (!partialDefinition || partialDefinition.exportFoundations.join(",") !== "color,type") {
+  throw new Error("La definition exportada no guarda solo las foundations marcadas.");
+}
+if (
+  partialDefinition.colors.length === 0 ||
+  partialDefinition.type.families.length === 0 ||
+  partialDefinition.spacing.steps.length !== 0 ||
+  partialDefinition.border.steps.length !== 0 ||
+  partialDefinition.radius.steps.length !== 0 ||
+  partialDefinition.shadow.levels.length !== 0 ||
+  partialDefinition.motion.durations.length !== 0 ||
+  partialDefinition.blur.steps.length !== 0
+) {
+  throw new Error("foundry_tokens.json / definition sigue incluyendo tokens de foundations desmarcadas.");
+}
+const fullDefinition = exportSystem(project.systems[0]!).definition;
+if (!fullDefinition || fullDefinition.spacing.steps.length === 0 || fullDefinition.border.steps.length === 0) {
+  throw new Error("Sin filtro de foundations la definition debe seguir completa.");
+}
+const partialCore = tokensCoreDocument(project.systems[0]!, ["color", "spacing"]);
+if (!partialCore.color || !partialCore.spacing || partialCore.font || partialCore.border || partialCore.motion) {
+  throw new Error("Copy JSON / tokens.core.json no respeta las foundations marcadas.");
+}
 const radiusScale = createRadiusScale();
 if (!radiusScale.full || radiusScale.mode !== "jumps" || radiusScale.base !== 4 || radiusScale.count !== 4) {
   throw new Error("La escala de radius nueva no usa base 4, 4 pasos, Con saltos y Full.");
@@ -825,13 +849,13 @@ if (
   !coreDoc.shadow ||
   !coreDoc.motion
 ) {
-  throw new Error(`core/tokens.core.json incompleto: ${JSON.stringify(Object.keys(coreDoc))}`);
+  throw new Error(`tokens.core.json incompleto: ${JSON.stringify(Object.keys(coreDoc))}`);
 }
 const zipEntries = foundationZipEntries(source);
 const zipNames = zipEntries.map((entry) => entry.name).join(",");
 if (
   !zipNames.includes("foundry_tokens.json") ||
-  !zipNames.includes("core/tokens.core.json") ||
+  !zipNames.includes("tokens.core.json") ||
   !zipNames.includes("core/spacing.core.json") ||
   !zipNames.includes("core/color.core.json") ||
   !zipNames.includes("core/typography.core.json") ||
@@ -842,7 +866,11 @@ if (
 }
 const foundryEntry = zipEntries.find((entry) => entry.name === "foundry_tokens.json");
 if (!foundryEntry || new TextDecoder().decode(foundryEntry.data) !== JSON.stringify(tokenFile, null, 2)) {
-  throw new Error("Copy JSON / foundry_tokens.json no coinciden con exportSystem.");
+  throw new Error("foundry_tokens.json del ZIP no coincide con exportSystem.");
+}
+const coreEntry = zipEntries.find((entry) => entry.name === "tokens.core.json");
+if (!coreEntry || new TextDecoder().decode(coreEntry.data) !== JSON.stringify(coreDoc, null, 2)) {
+  throw new Error("Copy JSON / tokens.core.json no coinciden.");
 }
 const legacyExport = { source: "foundry", kind: "system", id: "x", name: "Old", sets: [{ id: "x", name: "Old", variables: [] }] };
 try {

@@ -263,14 +263,14 @@ export function downloadZipContents(foundations?: readonly string[]): DownloadFi
   const entries: DownloadFileEntry[] = [
     {
       name: "foundry_tokens.json",
-      description: "Foundry export with Figma variables and the editable system definition",
+      description: "Foundry export with Figma variables and the editable definition for the selected foundations",
     },
     {
       name: "foundations.css",
       description: "CSS custom properties for the selected foundations",
     },
     {
-      name: "core/tokens.core.json",
+      name: "tokens.core.json",
       description: "All selected foundations merged into one DTCG file",
     },
   ];
@@ -288,9 +288,45 @@ export function downloadFileNames(foundations?: readonly string[]): string[] {
   return downloadZipContents(foundations).map((entry) => entry.name);
 }
 
+/** Drop token data for foundations left out of the export so foundry_tokens.json matches the ticks. */
+function scopeDefinition(system: DesignSystem, foundations: readonly ExportFoundationId[]): DesignSystem {
+  const include = new Set(foundations);
+  const definition = structuredClone(system);
+  definition.exportFoundations = EXPORT_FOUNDATION_IDS.filter((id) => include.has(id));
+
+  if (!include.has("color")) {
+    definition.colors = [];
+    definition.aliases = [];
+  }
+  if (!include.has("type")) {
+    definition.type = { ...definition.type, families: [], stepsAbove: 0, stepsBelow: 0 };
+  }
+  if (!include.has("border")) {
+    definition.border = { ...definition.border, steps: [], customValues: [] };
+  }
+  if (!include.has("spacing")) {
+    definition.spacing = { ...definition.spacing, steps: [], customValues: [] };
+  }
+  if (!include.has("radius")) {
+    definition.radius = { ...definition.radius, steps: [], customValues: [], full: false };
+  }
+  if (!include.has("shadow")) {
+    definition.shadow = { ...definition.shadow, levels: [] };
+  }
+  if (!include.has("motion")) {
+    definition.motion = { ...definition.motion, durations: [], delays: [], curves: [] };
+  }
+  if (!include.has("blur")) {
+    definition.blur = { ...definition.blur, steps: [], customValues: [] };
+  }
+
+  return definition;
+}
+
 export function exportSystem(system: DesignSystem, foundations?: readonly string[]): ExportFile {
   const name = segment(system.name, "System");
-  const include = new Set(normalizeFoundations(foundations) ?? EXPORT_FOUNDATION_IDS);
+  const picked = normalizeFoundations(foundations) ?? EXPORT_FOUNDATION_IDS;
+  const include = new Set(picked);
   const variables = EXPORT_FOUNDATION_IDS.filter((id) => include.has(id)).flatMap((id) => foundationBuilders[id](system));
   return {
     source: FOUNDRY_SOURCE,
@@ -305,8 +341,9 @@ export function exportSystem(system: DesignSystem, foundations?: readonly string
         variables,
       },
     ],
-    // Always the full editable system (not filtered by foundation ticks) so import can recreate it.
-    definition: structuredClone(system),
+    // When foundations are passed (Copy / ZIP / publish), scope definition to the same ticks.
+    // With no filter, keep the full editable system for import round-trips.
+    definition: foundations === undefined ? structuredClone(system) : scopeDefinition(system, picked),
   };
 }
 
