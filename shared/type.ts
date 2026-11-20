@@ -25,6 +25,7 @@ const MIN_LETTER_SPACING = -0.1;
 const MAX_LETTER_SPACING = 0.2;
 const DEFAULT_HEIGHT_AT_BASE = 1.5;
 const DEFAULT_HEIGHT_AT_LARGEST = 1.1;
+const DEFAULT_SPACING_AT_LOWEST = 0;
 const DEFAULT_SPACING_AT_BASE = 0;
 const DEFAULT_SPACING_AT_LARGEST = 0;
 
@@ -104,6 +105,26 @@ export function interpolateByStep(step: number, stepsAbove: number, atBase: numb
   return round3(atBase + (step * (atLargest - atBase)) / stepsAbove);
 }
 
+/**
+ * Letter-spacing uses two intervals: lowest→base (steps below) and base→largest (steps above).
+ * When a side has no steps, that side stays at `atBase`.
+ */
+export function interpolateLetterSpacing(
+  step: number,
+  stepsBelow: number,
+  stepsAbove: number,
+  atLowest: number,
+  atBase: number,
+  atLargest: number,
+): number {
+  if (step < 0) {
+    if (stepsBelow <= 0) return atBase;
+    return round3(atBase + (step * (atBase - atLowest)) / stepsBelow);
+  }
+  if (stepsAbove <= 0) return atBase;
+  return round3(atBase + (step * (atLargest - atBase)) / stepsAbove);
+}
+
 /** @deprecated Prefer interpolateByStep. */
 export function lineHeightForStep(
   step: number,
@@ -120,14 +141,27 @@ export function heightForStep(size: number, lineHeight: number): number {
 }
 
 /** True when letter-spacing anchors leave the default flat zero. */
-export function hasLetterSpacingScale(spacingAtBase: number, spacingAtLargest: number): boolean {
-  return spacingAtBase !== 0 || spacingAtLargest !== 0;
+export function hasLetterSpacingScale(
+  spacingAtLowest: number,
+  spacingAtBase: number,
+  spacingAtLargest: number,
+): boolean {
+  return spacingAtLowest !== 0 || spacingAtBase !== 0 || spacingAtLargest !== 0;
+}
+
+/**
+ * Spacing token names run opposite to size: place 0 is the largest size → `100`
+ * (typically the smallest tracking), up to the smallest size at the top of the scale.
+ */
+export function spacingNameForPlace(placeFromLargest: number): string {
+  return nameForStep(placeFromLargest);
 }
 
 export function typeSteps(input: {
   baseSize: number;
   heightAtBase: number;
   heightAtLargest: number;
+  spacingAtLowest?: number;
   spacingAtBase?: number;
   spacingAtLargest?: number;
   ratio: number;
@@ -140,6 +174,7 @@ export function typeSteps(input: {
   const baseSize = round1(clamp(input.baseSize, 4, 120));
   const heightAtBase = round3(clamp(input.heightAtBase, MIN_LINE_HEIGHT, MAX_LINE_HEIGHT));
   const heightAtLargest = round3(clamp(input.heightAtLargest, MIN_LINE_HEIGHT, MAX_LINE_HEIGHT));
+  const spacingAtLowest = round3(clamp(input.spacingAtLowest ?? 0, MIN_LETTER_SPACING, MAX_LETTER_SPACING));
   const spacingAtBase = round3(clamp(input.spacingAtBase ?? 0, MIN_LETTER_SPACING, MAX_LETTER_SPACING));
   const spacingAtLargest = round3(clamp(input.spacingAtLargest ?? 0, MIN_LETTER_SPACING, MAX_LETTER_SPACING));
   const ratio = Math.round(clamp(input.ratio, 1.05, 2) * 1000) / 1000;
@@ -149,7 +184,14 @@ export function typeSteps(input: {
   for (let step = -below; step <= above; step += 1) {
     const size = sizeForStep(baseSize, ratio, step, wholePixels);
     const lineHeight = interpolateByStep(step, above, heightAtBase, heightAtLargest);
-    const spacingEm = interpolateByStep(step, above, spacingAtBase, spacingAtLargest);
+    const spacingEm = interpolateLetterSpacing(
+      step,
+      below,
+      above,
+      spacingAtLowest,
+      spacingAtBase,
+      spacingAtLargest,
+    );
     steps.push({
       step,
       name: nameForStep(place),
@@ -169,6 +211,7 @@ export function stepsForCollection(collection: TypeCollection): TypeStep[] {
     baseSize: collection.baseSize,
     heightAtBase: collection.heightAtBase,
     heightAtLargest: collection.heightAtLargest,
+    spacingAtLowest: collection.spacingAtLowest,
     spacingAtBase: collection.spacingAtBase,
     spacingAtLargest: collection.spacingAtLargest,
     ratio: ratioValue(collection.ratioId, collection.customRatio),
@@ -195,6 +238,7 @@ export function createTypeCollection(name: string, id?: string): TypeCollection 
     baseSize: 16,
     heightAtBase: DEFAULT_HEIGHT_AT_BASE,
     heightAtLargest: DEFAULT_HEIGHT_AT_LARGEST,
+    spacingAtLowest: DEFAULT_SPACING_AT_LOWEST,
     spacingAtBase: DEFAULT_SPACING_AT_BASE,
     spacingAtLargest: DEFAULT_SPACING_AT_LARGEST,
     ratioId: "major-third",
@@ -285,6 +329,7 @@ export function normalizeTypeCollection(raw: LegacyType | null | undefined): Typ
       ? legacyHeightAtBase(source, baseSize)
       : normalizeLineHeight(source.heightAtBase, DEFAULT_HEIGHT_AT_BASE);
   const heightAtLargest = normalizeLineHeight(source.heightAtLargest, DEFAULT_HEIGHT_AT_LARGEST);
+  const spacingAtLowest = normalizeLetterSpacing(source.spacingAtLowest, DEFAULT_SPACING_AT_LOWEST);
   const spacingAtBase = normalizeLetterSpacing(source.spacingAtBase, DEFAULT_SPACING_AT_BASE);
   const spacingAtLargest = normalizeLetterSpacing(source.spacingAtLargest, DEFAULT_SPACING_AT_LARGEST);
   return {
@@ -293,6 +338,7 @@ export function normalizeTypeCollection(raw: LegacyType | null | undefined): Typ
     baseSize,
     heightAtBase,
     heightAtLargest,
+    spacingAtLowest,
     spacingAtBase,
     spacingAtLargest,
     ratioId,

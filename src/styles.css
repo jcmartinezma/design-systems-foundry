@@ -1000,11 +1000,21 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     gap: var(--spacing-lg);
   }
   .type-options .type-controls { grid-template-columns: 1fr 1fr; }
+  .type-options .type-controls.is-row { display: flex; }
 }
 .type-controls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--spacing-sm);
+}
+.type-controls.is-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--spacing-sm);
+}
+.type-controls.is-row > label {
+  flex: 1 1 0;
+  min-width: 0;
 }
 .type-controls label { display: flex; flex-direction: column; gap: var(--spacing-xs); }
 /* Sit on the input baseline of neighbouring fields: checkbox + label in one row. */
@@ -1128,12 +1138,21 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .type-row-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-xs) var(--spacing-sm);
+  gap: var(--spacing-xs) var(--spacing-md);
   align-items: baseline;
+}
+.type-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--spacing-2xs);
+}
+.type-stat-label {
+  color: var(--faint);
+  font-size: var(--text-size-xxs);
 }
 .type-row.is-base { background: var(--elevated); }
 :root[data-theme="light"] .type-row.is-base { background: var(--surface); }
-.type-row.is-base .type-meta:nth-child(2) {
+.type-row .type-stat .type-meta {
   color: var(--text);
   font-weight: var(--text-weight-semibold);
 }

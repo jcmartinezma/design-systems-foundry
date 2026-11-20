@@ -256,7 +256,7 @@ function composeValues(input: {
 }): number[] {
   const body = input.mode === "custom" ? input.customValues : generatedBody(input.mode, input.base, input.count, input.ratio);
   const micros = input.micro ? microPixels(input.base) : [];
-  return strictlyIncreasing([0, ...micros, ...body]);
+  return strictlyIncreasing([...micros, ...body]);
 }
 
 function generatedBody(mode: Exclude<SpacingMode, "custom">, base: number, count: number, ratio: number): number[] {
@@ -300,21 +300,21 @@ function microPixels(base: number): number[] {
 }
 
 function nameSteps(values: number[], micros: number[], base: number): SpacingStep[] {
+  const positive = values.filter((px) => px > 0);
   const microSet = new Set(micros);
   const leading = new Set<number>();
-  for (const px of values) {
-    if (px === 0) continue;
+  for (const px of positive) {
     if (microSet.has(px)) leading.add(px);
     else break;
   }
   let regular = 0;
   let microSlot = 0;
-  return values.map((px) => {
-    let name = "0";
-    if (px !== 0 && leading.has(px)) {
+  return positive.map((px) => {
+    let name: string;
+    if (leading.has(px)) {
       microSlot += 1;
       name = microSlot === 1 ? "50" : "75";
-    } else if (px !== 0) {
+    } else {
       regular += 1;
       name = String(regular * 100);
     }
@@ -324,19 +324,18 @@ function nameSteps(values: number[], micros: number[], base: number): SpacingSte
       px,
       rem: Math.round((px / 16) * 10000) / 10000,
       micro: microSet.has(px),
-      offGrid: px > 0 && !isMultiple(px, base / 2),
+      offGrid: !isMultiple(px, base / 2),
     };
   });
 }
 
 function strictlyIncreasing(values: number[]): number[] {
-  const sorted = values.map((value) => roundPx(value)).filter((value) => Number.isFinite(value) && value >= 0);
+  const sorted = values.map((value) => roundPx(value)).filter((value) => Number.isFinite(value) && value > 0);
   sorted.sort((a, b) => a - b);
   const unique: number[] = [];
   for (const value of sorted) {
     if (unique.length === 0 || value > unique[unique.length - 1]!) unique.push(value);
   }
-  if (unique[0] !== 0) unique.unshift(0);
   return unique;
 }
 

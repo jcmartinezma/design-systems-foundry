@@ -3,7 +3,13 @@ import { blurDtcg } from "./blur";
 import { borderDtcg } from "./border";
 import { radiusDtcg } from "./radius";
 import { dimensionToken, spacingDtcg } from "./spacing";
-import { familyTokenName, fontWeightSteps, hasLetterSpacingScale, stepsForCollection } from "./type";
+import {
+  familyTokenName,
+  fontWeightSteps,
+  hasLetterSpacingScale,
+  spacingNameForPlace,
+  stepsForCollection,
+} from "./type";
 import type {
   DesignSystem,
   ExportFoundationId,
@@ -110,14 +116,14 @@ export function typeDtcg(type: TypeCollection): {
   let spacing:
     | (ReturnType<typeof dimensionToken> & { $description?: string })
     | Record<string, ReturnType<typeof dimensionToken> & { $description?: string }>;
-  if (hasLetterSpacingScale(type.spacingAtBase, type.spacingAtLargest)) {
+  if (hasLetterSpacingScale(type.spacingAtLowest, type.spacingAtBase, type.spacingAtLargest)) {
     const scaled: Record<string, ReturnType<typeof dimensionToken> & { $description?: string }> = {};
-    for (const step of steps) {
-      scaled[dtcgName(step.name, "step")] = {
+    [...steps].reverse().forEach((step, place) => {
+      scaled[dtcgName(spacingNameForPlace(place), "step")] = {
         ...dimensionToken(step.spacing),
         $description: `${step.spacing} px · step ${step.step}`,
       };
-    }
+    });
     spacing = scaled;
   } else {
     spacing = { ...dimensionToken(0), $description: "0 px." };

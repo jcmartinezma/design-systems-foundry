@@ -28,7 +28,7 @@ export function TypeView({ scale, onChange }: Props) {
   const steps = [...stepsForCollection(scale)].reverse();
   const face = previewFace(scale);
   const ratio = ratioValue(scale.ratioId, scale.customRatio);
-  const spacingScale = hasLetterSpacingScale(scale.spacingAtBase, scale.spacingAtLargest);
+  const spacingScale = hasLetterSpacingScale(scale.spacingAtLowest, scale.spacingAtBase, scale.spacingAtLargest);
 
   function patchFamily(next: FontFamily) {
     onChange({ ...scale, families: scale.families.map((family) => (family.id === next.id ? next : family)) });
@@ -140,7 +140,28 @@ export function TypeView({ scale, onChange }: Props) {
 
             <section className="type-block">
               <h2>Letter spacing</h2>
-              <div className="type-controls">
+              <div className="type-controls is-row">
+                {scale.stepsBelow > 0 ? (
+                  <label>
+                    <span>At lowest</span>
+                    <span className="unit-field">
+                      <input
+                        type="number"
+                        min={-0.1}
+                        max={0.2}
+                        step={0.01}
+                        value={scale.spacingAtLowest}
+                        onChange={(event) =>
+                          onChange({
+                            ...scale,
+                            spacingAtLowest: numberOr(event.target.value, scale.spacingAtLowest),
+                          })
+                        }
+                      />
+                      <span className="unit">em</span>
+                    </span>
+                  </label>
+                ) : null}
                 <label>
                   <span>At base</span>
                   <span className="unit-field">
@@ -181,10 +202,8 @@ export function TypeView({ scale, onChange }: Props) {
               </div>
               <p className="status">
                 {spacingScale
-                  ? scale.stepsAbove > 0
-                    ? `From ${scale.spacingAtBase} em at the base to ${scale.spacingAtLargest} em at the largest size.`
-                    : `All steps use ${scale.spacingAtBase} em.`
-                  : "Leave both at 0 for a single shared spacing token."}
+                  ? spacingStatus(scale)
+                  : "Leave all anchors at 0 for a single shared spacing token."}
               </p>
             </section>
 
@@ -236,16 +255,7 @@ export function TypeView({ scale, onChange }: Props) {
 
           <section className="type-stage">
             <h2>Preview</h2>
-            <p>
-              One row per step of <b>font/size</b> and <b>font/height</b>
-              {spacingScale ? (
-                <>
-                  {" "}
-                  and <b>font/spacing</b>
-                </>
-              ) : null}
-              . The sample uses {face.label}.
-            </p>
+            <p>One row per size step. The sample uses {face.label}.</p>
             <label className="type-preview">
               <span>Sample text</span>
               <input
@@ -269,15 +279,19 @@ export function TypeView({ scale, onChange }: Props) {
                     style={{ ["--type-size" as string]: `${step.size}px` }}
                   >
                     <div className="type-row-bar">
-                      <span className="type-key">font/size/{step.name}</span>
-                      <span className="type-meta">{step.size} px</span>
-                      <span className="type-key">font/height/{step.name}</span>
-                      <span className="type-meta">{linePx} px</span>
+                      <span className="type-stat">
+                        <span className="type-stat-label">Size</span>
+                        <span className="type-meta">{step.size} px</span>
+                      </span>
+                      <span className="type-stat">
+                        <span className="type-stat-label">Height</span>
+                        <span className="type-meta">{linePx} px</span>
+                      </span>
                       {spacingScale ? (
-                        <>
-                          <span className="type-key">font/spacing/{step.name}</span>
+                        <span className="type-stat">
+                          <span className="type-stat-label">Spacing</span>
                           <span className="type-meta">{step.spacing} px</span>
-                        </>
+                        </span>
                       ) : null}
                       {step.step === 0 ? <span className="type-base-tag">Base</span> : null}
                     </div>
@@ -333,6 +347,15 @@ function SliderField({ label, value, min, max, step, unit, digits, onChange }: S
       />
     </label>
   );
+}
+
+function spacingStatus(scale: TypeCollection): string {
+  const parts: string[] = [];
+  if (scale.stepsBelow > 0) parts.push(`${scale.spacingAtLowest} em at the lowest size`);
+  parts.push(`${scale.spacingAtBase} em at the base`);
+  if (scale.stepsAbove > 0) parts.push(`${scale.spacingAtLargest} em at the largest size`);
+  if (parts.length === 1) return `All steps use ${scale.spacingAtBase} em.`;
+  return `From ${parts.join(" to ")}.`;
 }
 
 function previewFace(scale: TypeCollection): { family: string; weight: number; label: string } {

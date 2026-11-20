@@ -238,10 +238,10 @@ if (!createExampleProject().systems[0]?.type.families.length) {
 const linearBody = generatedSpacingValues("linear", 4, 6, 1.5).join(",");
 if (linearBody !== "4,8,12,16,20,24") throw new Error(`Lineal 4 × 6: ${linearBody}`);
 const linear = materialize({ base: 4, mode: "linear", count: 6, ratio: 1.5, micro: false, customValues: [] });
-if (linear.steps.map((step) => step.px).join(",") !== "0,4,8,12,16,20,24") {
-  throw new Error(`Lineal debería empezar en 0: ${linear.steps.map((step) => step.px).join(",")}`);
+if (linear.steps.map((step) => step.px).join(",") !== "4,8,12,16,20,24") {
+  throw new Error(`Lineal no debe incluir 0: ${linear.steps.map((step) => step.px).join(",")}`);
 }
-if (linear.steps.map((step) => step.name).join(",") !== "0,100,200,300,400,500,600") {
+if (linear.steps.map((step) => step.name).join(",") !== "100,200,300,400,500,600") {
   throw new Error(`Los nombres no van de cien en cien: ${linear.steps.map((step) => step.name).join(",")}`);
 }
 const jumpsBody = generatedSpacingValues("jumps", 4, 10, 1.5).join(",");
@@ -253,13 +253,13 @@ if (ratioBody !== "4,6,9,14,20,30") throw new Error(`Ratio 1.5 base 4: ${ratioBo
 const collapsed = generatedSpacingValues("ratio", 8, 4, 1.1).join(",");
 if (collapsed !== "8,9,10,11") throw new Error(`Un ratio que se aplasta no sigue creciendo: ${collapsed}`);
 const micro = materialize({ base: 4, mode: "jumps", count: 4, ratio: 1.5, micro: true, customValues: [] });
-if (micro.steps.map((step) => step.px).join(",") !== "0,2,4,6,8,12,16") {
+if (micro.steps.map((step) => step.px).join(",") !== "2,4,6,8,12,16") {
   throw new Error(`Micro con base 4: ${micro.steps.map((step) => step.px).join(",")}`);
 }
-if (micro.steps[1]?.name !== "50" || !micro.steps[1]?.micro) throw new Error("El primer micro debería ser spacing/50.");
+if (micro.steps[0]?.name !== "50" || !micro.steps[0]?.micro) throw new Error("El primer micro debería ser spacing/50.");
 if (!micro.steps.some((step) => step.px === 6 && step.micro)) throw new Error("6 px debería seguir marcado como micro.");
 const half = materialize({ base: 5, mode: "ratio", count: 4, ratio: 1.5, micro: true, customValues: [] });
-if (half.steps.map((step) => step.px).join(",") !== "0,2.5,5,8,11,17") {
+if (half.steps.map((step) => step.px).join(",") !== "2.5,5,8,11,17") {
   throw new Error(`Base impar: ${half.steps.map((step) => step.px).join(",")}`);
 }
 for (const mode of ["linear", "jumps", "ratio", "fibonacci"] as const) {
@@ -270,7 +270,7 @@ for (const mode of ["linear", "jumps", "ratio", "fibonacci"] as const) {
   if (values.some((value) => !Number.isInteger(value))) throw new Error(`${mode} con base par no es entero.`);
 }
 const custom = materialize({ base: 4, mode: "custom", count: 10, ratio: 1.5, micro: false, customValues: [12, 4, 8, 4, 5] });
-if (custom.steps.map((step) => step.px).join(",") !== "0,4,5,8,12") {
+if (custom.steps.map((step) => step.px).join(",") !== "4,5,8,12") {
   throw new Error(`Custom no ordena: ${custom.steps.map((step) => step.px).join(",")}`);
 }
 if (!custom.steps.find((step) => step.px === 5)?.offGrid) throw new Error("5 px con base 4 debería avisar.");
@@ -283,7 +283,7 @@ const edited = editSpacingValue(jumps, "100", 7);
 if (!edited.ok || edited.scale.mode !== "custom" || !edited.scale.edited) {
   throw new Error("Editar un salto debería pasar a Custom.");
 }
-if (edited.scale.steps.map((step) => step.px).join(",") !== "0,7,8,12,16,24,32,40,48,64,80") {
+if (edited.scale.steps.map((step) => step.px).join(",") !== "7,8,12,16,24,32,40,48,64,80") {
   throw new Error(`La edición no conservó el resto: ${edited.scale.steps.map((step) => step.px).join(",")}`);
 }
 const restored = restoreSpacing(edited.scale);
@@ -296,7 +296,7 @@ const ratioScale = materialize({ base: 4, mode: "ratio", count: 6, ratio: 1.5, m
 const ratioEdit = editSpacingValue(ratioScale, "200", 7);
 if (!ratioEdit.ok || ratioEdit.scale.mode !== "custom") throw new Error("Editar Ratio debería pasar a Custom.");
 const ratioPx = ratioEdit.scale.steps.map((step) => step.px);
-if (ratioPx.join(",") !== "0,4,7,9,14,20,30") throw new Error(`Ratio editado: ${ratioPx.join(",")}`);
+if (ratioPx.join(",") !== "4,7,9,14,20,30") throw new Error(`Ratio editado: ${ratioPx.join(",")}`);
 if (restoreSpacing(ratioEdit.scale).steps.map((step) => step.px).join(",") !== ratioScale.steps.map((step) => step.px).join(",")) {
   throw new Error("Restablecer no volvió al ratio generado.");
 }
@@ -312,7 +312,7 @@ if (legacySpacing.mode !== "jumps" || legacySpacing.steps.map((step) => step.px)
   throw new Error("La escala antigua por defecto no pasó a Con saltos.");
 }
 const legacyCustom = normalizeSpacing({ base: 4, steps: [{ multiplier: 1, px: 4 }, { multiplier: 2, px: 10 }] });
-if (legacyCustom.mode !== "custom" || legacyCustom.steps.map((step) => step.px).join(",") !== "0,4,10") {
+if (legacyCustom.mode !== "custom" || legacyCustom.steps.map((step) => step.px).join(",") !== "4,10") {
   throw new Error("Una escala antigua editada no se conservó.");
 }
 const fresh = createSpacingScale();
@@ -320,7 +320,7 @@ if (fresh.mode !== "jumps" || fresh.base !== 4 || fresh.count !== 10 || fresh.mi
   throw new Error("La escala nueva no usa base 4, 10 pasos, ratio 1.5 y Con saltos.");
 }
 const twoMicros = materialize({ base: 4, mode: "custom", count: 4, ratio: 1.5, micro: true, customValues: [8, 16] });
-if (twoMicros.steps.map((step) => `${step.name}:${step.px}`).join(",") !== "0:0,50:2,75:6,100:8,200:16") {
+if (twoMicros.steps.map((step) => `${step.name}:${step.px}`).join(",") !== "50:2,75:6,100:8,200:16") {
   throw new Error(`Dos micros: ${twoMicros.steps.map((step) => `${step.name}:${step.px}`).join(",")}`);
 }
 const dtcg = spacingDtcg(fresh);
@@ -723,6 +723,7 @@ const typed = {
     baseSize: 16,
     heightAtBase: 1.5,
     heightAtLargest: 1.1,
+    spacingAtLowest: 0,
     spacingAtBase: 0,
     spacingAtLargest: 0,
     ratioId: "major-third" as const,
@@ -772,21 +773,43 @@ if (fontVariables.some((variable) => /font\/(size|height)\/(sm|base|lg|xl)/.test
 }
 const spacedType = exportSystem({
   ...typed,
-  type: { ...typed.type, spacingAtBase: 0, spacingAtLargest: -0.04 },
+  type: {
+    ...typed.type,
+    spacingAtLowest: 0.04,
+    spacingAtBase: 0,
+    spacingAtLargest: -0.04,
+  },
 }).sets[0]?.variables ?? [];
 const spacedName = (name: string) => spacedType.find((variable) => variable.name === name);
 if (spacedName("font/spacing")) {
   throw new Error("Con interpolación de spacing no debe existir el token plano font/spacing.");
 }
 // sizes 12.8 / 16 / 20 · em 0.04 / 0 / -0.04 → px 0.5 / 0 / -0.8
-if (spacedName("font/spacing/200")?.number !== 0 || spacedName("font/spacing/300")?.number !== -0.8) {
-  throw new Error("font/spacing debe exportarse en px (size × em) interpolando por paso.");
+// spacing tokens run opposite to size: 100 = largest size (smallest tracking)
+if (spacedName("font/spacing/200")?.number !== 0 || spacedName("font/spacing/100")?.number !== -0.8) {
+  throw new Error("font/spacing debe exportarse en px (size × em) con 100 en el tamaño mayor.");
 }
-if (spacedName("font/spacing/100")?.number !== 0.5 || spacedName("font/spacing/100")?.css !== "0.5px") {
-  throw new Error("El paso bajo la base debe seguir la recta de letter-spacing en px.");
+if (spacedName("font/spacing/300")?.number !== 0.5 || spacedName("font/spacing/300")?.css !== "0.5px") {
+  throw new Error("El paso bajo la base debe usar spacingAtLowest en px.");
 }
 if (spacedType.some((variable) => variable.name.startsWith("font/spacing") && variable.css.endsWith("em"))) {
   throw new Error("font/spacing no debe exportarse en em.");
+}
+const flatBelow = exportSystem({
+  ...typed,
+  type: { ...typed.type, spacingAtLowest: 0, spacingAtBase: 0, spacingAtLargest: -0.04 },
+}).sets[0]?.variables ?? [];
+const flatBelowName = (name: string) => flatBelow.find((variable) => variable.name === name);
+// Without a lowest anchor, steps below the base stay at the base coefficient (0 em → 0 px).
+if (flatBelowName("font/spacing/300")?.number !== 0 || flatBelowName("font/spacing/100")?.number !== -0.8) {
+  throw new Error("Sin spacingAtLowest, el intervalo bajo la base debe quedar en la ancla base.");
+}
+const cssLines = cssForExport(exportSystem(typed))
+  .split("\n")
+  .filter((line) => line.startsWith("  --"));
+const cssSorted = [...cssLines].sort((left, right) => left.localeCompare(right));
+if (cssLines.join("\n") !== cssSorted.join("\n")) {
+  throw new Error("El CSS exportado no ordena las variables alfabéticamente.");
 }
 const capped = normalizeTypeCollection({ stepsAbove: 8, stepsBelow: 8 });
 if (capped.stepsAbove !== 6 || capped.stepsBelow !== 3) {

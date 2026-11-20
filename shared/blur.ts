@@ -39,17 +39,20 @@ function clampCount(value: number | undefined): number {
   return Math.min(BLUR_COUNT_MAX, Math.max(BLUR_COUNT_MIN, next));
 }
 
+function zeroStep(): SpacingStep {
+  return { id: "blur-0", name: "0", px: 0, rem: 0, micro: false, offGrid: false };
+}
+
 /** Spacing cannot generate fewer than 4 steps, so blur builds 4 and keeps the first N. */
 function limit(scale: SpacingScale, count: number): BlurScale {
   const wanted = clampCount(count);
-  const zero = scale.steps.find((step) => step.px === 0);
   const positive = scale.steps.filter((step) => step.px > 0).slice(0, scale.mode === "custom" ? BLUR_COUNT_MAX : wanted);
   const customFrom = scale.customFrom ? { ...scale.customFrom, count: clampCount(scale.customFrom.count) } : null;
   return {
     ...scale,
     micro: false,
     count: wanted,
-    steps: [...(zero ? [zero] : []), ...positive].map((step) => ({ ...step, id: `blur-${step.name}` })),
+    steps: [zeroStep(), ...positive.map((step) => ({ ...step, id: `blur-${step.name}` }))],
     customValues: scale.mode === "custom" ? positive.map((step) => step.px) : scale.customValues.slice(0, BLUR_COUNT_MAX),
     customFrom,
   };

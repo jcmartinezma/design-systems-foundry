@@ -44,16 +44,19 @@ function clampCount(value: number | undefined): number {
   return Math.min(RADIUS_COUNT_MAX, Math.max(RADIUS_COUNT_MIN, next));
 }
 
+function zeroStep(): SpacingStep {
+  return { id: "radius-0", name: "0", px: 0, rem: 0, micro: false, offGrid: false };
+}
+
 /** Spacing cannot generate fewer than 4 steps, so radius builds 4 and keeps the first N. */
 function limit(scale: SpacingScale, count: number): SpacingScale {
   const wanted = clampCount(count);
-  const zero = scale.steps.find((step) => step.px === 0);
   const positive = scale.steps.filter((step) => step.px > 0).slice(0, scale.mode === "custom" ? RADIUS_COUNT_MAX : wanted);
   const customFrom = scale.customFrom ? { ...scale.customFrom, count: clampCount(scale.customFrom.count) } : null;
   return {
     ...scale,
     count: wanted,
-    steps: [...(zero ? [zero] : []), ...positive],
+    steps: [zeroStep(), ...positive],
     customValues: scale.mode === "custom" ? positive.map((step) => step.px) : scale.customValues.slice(0, RADIUS_COUNT_MAX),
     customFrom,
   };

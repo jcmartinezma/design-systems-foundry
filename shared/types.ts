@@ -47,6 +47,8 @@ export type TypeCollection = {
   heightAtBase: number;
   /** Unitless line-height at the largest size step. Ignored when stepsAbove is 0. */
   heightAtLargest: number;
+  /** Letter-spacing in em at the smallest size step. Ignored when stepsBelow is 0. */
+  spacingAtLowest: number;
   /** Letter-spacing in em at the base size step. */
   spacingAtBase: number;
   /** Letter-spacing in em at the largest size step. Ignored when stepsAbove is 0. */

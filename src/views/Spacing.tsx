@@ -182,17 +182,13 @@ export function SpacingView({ scale, onChange, onToast }: Props) {
                   <span className="space-track" title={`${formatSpacingPx(step.px)} px`}>
                     <i style={{ width: `${step.px}px` }} />
                   </span>
-                  {step.px === 0 ? (
-                    <span className="space-fixed">0 px</span>
-                  ) : (
-                    <PxField
-                      px={step.px}
-                      label={`Pixels of spacing/${step.name}`}
-                      onCommit={(raw) => edit(step, raw)}
-                    />
-                  )}
+                  <PxField
+                    px={step.px}
+                    label={`Pixels of spacing/${step.name}`}
+                    onCommit={(raw) => edit(step, raw)}
+                  />
                   <span className="space-rem">{formatSpacingRem(step.px)}</span>
-                  {scale.mode === "custom" && step.px > 0 ? (
+                  {scale.mode === "custom" ? (
                     <button
                       type="button"
                       className="icon"
